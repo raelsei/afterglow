@@ -1,0 +1,23 @@
+{
+  "name": "afterglow",
+  "version": "1.0.0",
+  "description": "Your GitHub year as a spinning ASCII torus, drawn with your posts and links as one terminal session for a profile README.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "repository": "github:raelsei/afterglow",
+  "scripts": {
+    "start": "bun src/main.ts",
+    "build": "bun build src/main.ts --target=node --format=esm --minify --outfile dist/index.mjs",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "opentype.js": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "@types/opentype.js": "^1.3.10",
+    "typescript": "^7.0.2"
+  }
+}
