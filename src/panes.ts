@@ -118,7 +118,6 @@ export function yearPane(profile: Profile, href: string, compact: boolean): Pane
   const days = profile.weeks.flat().filter((day): day is Day => day !== null);
   const span = days.length ? `${monthYear(days[0]!.date)} – ${monthYear(days.at(-1)!.date)}` : "";
   const cell: Cell = compact ? TORUS_COMPACT : TORUS_FULL;
-  const legend = compact ? 0 : 1;
   const destination = href.replace(/^https?:\/\//, "").replace(/\/$/, "");
   return {
     kind: "single",
@@ -130,6 +129,9 @@ export function yearPane(profile: Profile, href: string, compact: boolean): Pane
         bands: compact ? 8 : 13,
         chrome: { top: { title: "year", meta: span }, bottom: true },
         draw: ({ ink, width, bands, palette }) => {
+          // Compact drops the legend line to save a band, unless the pane was
+          // stretched tall beside other panes and has the room anyway.
+          const legend = !compact || bands >= 12 ? 1 : 0;
           const area = (bands - 2 - legend) * BAND;
           const cols = Math.floor((width - INSET * 2 - 16) / cell.width);
           // The torus is scaled to the canvas height; in a pane taller than it is
