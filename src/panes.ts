@@ -130,7 +130,9 @@ export function yearPane(profile: Profile, href: string, compact: boolean): Pane
         draw: ({ ink, width, bands, palette }) => {
           const area = (bands - 2 - legend) * BAND;
           const cols = Math.floor((width - INSET * 2 - 16) / cell.width);
-          const rows = Math.floor((area - 8) / cell.height);
+          // The torus is scaled to the canvas height; in a pane taller than it is
+          // wide, cap the height at the width so the ring is not cut at the sides.
+          const rows = Math.min(Math.floor((area - 8) / cell.height), Math.floor((cols * cell.width) / cell.height));
           const key = `${cols}x${rows}`;
           let frames = torusCache.get(key);
           if (!frames) {

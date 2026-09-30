@@ -17,7 +17,7 @@ inputs:
     default: phosphor
   layout:
     description: |
-      The grid, one row per line: one pane (spans both columns) or two (share one height), from year, whoami, activity, posts, langs, top; `bar` alone on a line for the status line. A pane left out is off; one with no data (posts without a feed) drops out. Add :compact or :full to a name to size that pane.
+      The grid, one row per line: one pane (spans both columns) or two (share one height), from year, whoami, activity, posts, langs, top; `bar` alone on a line for the status line. A pane left out is off; one with no data (posts without a feed) drops out. Add :compact or :full to a name to size that pane. With `|` between columns, an empty side extends the pane above it down beside the next row (`year | whoami` then `     | posts`).
     default: |
       year whoami
       activity posts

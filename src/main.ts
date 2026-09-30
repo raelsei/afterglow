@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fetchFeed } from "./feed";
 import { fetchProfile, type Link } from "./github";
-import { DEFAULT_LAYOUT, parseLayout, placeRow, type PlacedRow } from "./layout";
+import { DEFAULT_LAYOUT, parseLayout, placeFull, placeRow, type Cell, type PlacedRow } from "./layout";
 import { FULL } from "./pane";
 import { graphPane, langsPane, postsPane, statusBar, topPane, whoamiPane, yearPane, type Pane } from "./panes";
 import { injectBlock, readmeBlock } from "./readme";
@@ -77,16 +77,24 @@ async function main(): Promise<void> {
   const drawn = `${now.getUTCDate()} ${MONTHS[now.getUTCMonth()]} ${now.getUTCFullYear()}`;
   const rows: PlacedRow[] = [];
   let panes = 0;
+  // A pane with nothing to show (posts without a feed) drops out; the rest of its row closes up.
+  const built = (cells: Cell[]) => cells.map((cell) => build(cell.id, cell.compact)).filter((pane): pane is Pane => pane !== null);
   for (const row of layout) {
-    if (row.bar) {
+    if ("bar" in row) {
       rows.push({ lines: [statusBar(input("session") || profile.login, links, drawn, FULL, REPO, links[0]?.url)] });
       continue;
     }
-    // A pane with nothing to show (posts without a feed) drops out; its partner takes the row.
-    const built = row.cells.map((cell) => build(cell.id, cell.compact)).filter((pane): pane is Pane => pane !== null);
-    if (built.length === 0) continue;
-    rows.push(placeRow(built));
-    panes += built.length;
+    if ("full" in row) {
+      const [pane] = built([row.full]);
+      if (pane) rows.push(placeFull(pane));
+      panes += pane ? 1 : 0;
+      continue;
+    }
+    const left = built(row.left);
+    const right = built(row.right);
+    if (left.length && right.length) rows.push(placeRow(left, right));
+    else for (const pane of [...left, ...right]) rows.push(placeFull(pane));
+    panes += left.length + right.length;
   }
 
   mkdirSync(outDir, { recursive: true });

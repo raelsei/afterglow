@@ -55,6 +55,19 @@ layout: |
   bar
 ```
 
+A pane can reach down beside several others. With `|` between the columns,
+leave a side empty and the pane above it extends into that row, as tall as
+everything stacked beside it:
+
+```yaml
+layout: |
+  year | whoami
+       | posts     # the torus runs down beside both
+  bar
+```
+
+Only one side of a row can reach down; the other side stacks.
+
 GitHub's Markdown leaves one layout tool, floating images, and it shapes what
 a row can be:
 
@@ -62,7 +75,7 @@ a row can be:
   flows beside the pane in the other column, on either side.
 - Two lists in one row do not fit that way, so the left one is drawn as a
   single image: its lines stop being separate links and the pane links as a
-  whole.
+  whole. The same happens to a list that reaches down beside others.
 - On a narrow screen the columns fall into one. The pane that floats comes
   first, so a row written `posts | activity` shows `activity` first on a
   phone.
