@@ -40,7 +40,22 @@ export function fontFaces(regular: string, bold = ""): string {
       descender: font.descender,
       glyphs,
     });
-    const data = Buffer.from(subset.toArrayBuffer()).toString("base64");
+    // opentype.js stamps the head table with the current time, and the two
+    // checksums over it follow. Zero all four, so the same text makes the same
+    // bytes and a file named by its content keeps its name until the drawing
+    // changes; browsers do not reject a font over its checksums.
+    const bytes = new Uint8Array(subset.toArrayBuffer());
+    const view = new DataView(bytes.buffer);
+    for (let i = 0; i < view.getUint16(4); i++) {
+      const record = 12 + i * 16;
+      if (String.fromCharCode(...bytes.subarray(record, record + 4)) === "head") {
+        const offset = view.getUint32(record + 8);
+        bytes.fill(0, record + 4, record + 8); // the head table's checksum
+        bytes.fill(0, offset + 8, offset + 12); // checkSumAdjustment
+        bytes.fill(0, offset + 20, offset + 36); // created, then modified
+      }
+    }
+    const data = Buffer.from(bytes).toString("base64");
     rules.push(`@font-face{font-family:${FAMILY};font-weight:${weight};src:url(data:font/otf;base64,${data}) format("opentype")}`);
   }
   return rules.join("");

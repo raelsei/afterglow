@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fetchFeed } from "./feed";
@@ -97,14 +98,23 @@ async function main(): Promise<void> {
     panes += left.length + right.length;
   }
 
+  // Every image is named by its content. GitHub's raw CDN keeps a file for
+  // five minutes and ignores query strings, so a drawing that changes under a
+  // fixed name reaches visitors late and unevenly; a new name reaches them with
+  // the README that points to it.
   mkdirSync(outDir, { recursive: true });
   let files = 0;
+  const written: Record<string, true> = {};
   for (const row of rows) {
     for (const image of [...(row.float ? [row.float] : []), ...row.lines.flat()]) {
-      for (const mode of ["dark", "light"] as const) {
-        writeFileSync(join(outDir, `${image.name}-${mode}.svg`), image.render(theme[mode]));
-        files++;
-      }
+      const dark = image.render(theme.dark);
+      const light = image.render(theme.light);
+      image.name = `${image.name}-${createHash("sha1").update(dark).update("\0").update(light).digest("hex").slice(0, 8)}`;
+      writeFileSync(join(outDir, `${image.name}-dark.svg`), dark);
+      writeFileSync(join(outDir, `${image.name}-light.svg`), light);
+      written[`${image.name}-dark.svg`] = true;
+      written[`${image.name}-light.svg`] = true;
+      files += 2;
     }
   }
 
@@ -113,6 +123,20 @@ async function main(): Promise<void> {
   if (readmePath) {
     const before = readFileSync(readmePath, "utf8");
     const after = injectBlock(before, block);
+    // The published branch is replaced on every run, and the README is
+    // committed a moment after it. Carry the images the old README still
+    // points to, so that moment shows the old dashboard instead of holes.
+    if (/^https?:\/\//.test(baseUrl)) {
+      const base = baseUrl.replace(/\/+$/, "");
+      const previous = [...before.matchAll(/(?:src|srcset)="([^"]+\.svg)"/g)]
+        .map((match) => match[1]!.replace(/&#38;/g, "&"))
+        .filter((url) => url.startsWith(`${base}/`) && !written[url.slice(base.length + 1)]);
+      for (const url of [...new Set(previous)]) {
+        const res = await fetch(url).catch(() => null);
+        if (res?.ok) writeFileSync(join(outDir, url.slice(base.length + 1)), Buffer.from(await res.arrayBuffer()));
+        else console.warn(`afterglow: could not carry over ${url}; the README it belongs to is being replaced anyway`);
+      }
+    }
     if (after !== before) writeFileSync(readmePath, after);
     console.log(after === before ? `${readmePath}: unchanged` : `${readmePath}: block updated`);
   }

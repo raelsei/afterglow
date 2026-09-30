@@ -178,10 +178,13 @@ With no inputs at all it draws everything it can find on your profile: name,
 bio, company, location, website and social accounts. A feed adds the posts
 pane.
 
-The images keep their file names and are replaced on the `output` branch,
-which is force-pushed, so it never grows a history. The README changes on most
-days anyway: each image's alt text says what the image shows, today's figures
-included, because an `<img>` gives a screen reader its alt and nothing else.
+Every image is named by its content. GitHub's raw CDN keeps a file for five
+minutes and ignores query strings, so a drawing that changed under a fixed name
+would reach visitors late and unevenly; a new name reaches them with the README
+that points to it. The `output` branch is force-pushed, so it never grows a
+history, and each run carries over the images the previous README used, so the
+moment between publishing and committing shows the old dashboard, not holes.
+The README therefore changes whenever a drawing does, which is most days.
 
 ## Inputs
 

@@ -49,12 +49,11 @@ export interface Image {
   render(palette: Palette): string;
 }
 
-/** Places a piece at a size and binds everything its SVG needs. The size is in
- *  the file name: GitHub's image cache keeps a file for minutes, and a layout
- *  change must not pair a new README with an old image of another height. */
+/** Places a piece at a size and binds everything its SVG needs. main.ts adds
+ *  a content hash to the name when it writes the files. */
 export function place(item: Piece, width: number, bands: number, margin = 0): Image {
   return {
-    name: `${item.name}-${width + margin}x${bands}`,
+    name: item.name,
     width: width + margin,
     alt: item.alt,
     href: item.href,
