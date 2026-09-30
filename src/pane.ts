@@ -18,8 +18,9 @@ export const GUTTER = 20;
 export const FULL = HALF * 2 + GUTTER;
 /** A right-floated pane is anchored to the column's right edge, not to its
  *  neighbour; this much trailing room puts it where the right column sits in
- *  every other row, and still leaves 2px for the list flowing beside it. */
-export const RIGHT_MARGIN = 4;
+ *  every other row (846 - 416 - 20 = 410), and leaves the list beside it
+ *  exactly its 410px. */
+export const RIGHT_MARGIN = COLUMN - FULL;
 /** Boxes sit 4px inside their image, so the 20px gutter plus 8 makes 28 between columns, the same as between rows. */
 export const INSET = 4;
 /** Where text starts inside an image. */

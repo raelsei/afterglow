@@ -322,7 +322,7 @@ export function graphPane(profile: Profile, href: string, compact: boolean): Pan
     pieces: [
       {
         name: compact ? "graph-compact" : "graph",
-        alt: `Contributions per day over the last year as a scrolling dot-matrix graph; the busiest day had ${peak}`,
+        alt: `Contributions per day over the last year as a scrolling dot-matrix graph; the busiest day had ${peak}. Opens ${href.replace(/^https?:\/\//, "").replace(/\/$/, "")}.`,
         href,
         bands: compact ? 5 : 7,
         chrome: { top: { title: "activity", meta: `per day · max ${peak}` }, bottom: true },

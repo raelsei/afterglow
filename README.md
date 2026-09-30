@@ -42,8 +42,9 @@ layout: |
 
 That is the default. Every pane also has a compact form, about half the
 height: `density: compact` makes them all compact, and `:compact` or `:full`
-after a name overrides it for that pane. The compact default above fits in one
-laptop screen.
+after a name overrides it for that pane. The default layout is about 1,040px
+tall at full density and 670px compact; each row you leave out saves another
+200 or so.
 
 ```yaml
 density: compact
