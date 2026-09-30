@@ -1,13 +1,13 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/preview-dark.png">
-  <img src="docs/preview-light.png" alt="afterglow on github.com/raelsei: a spinning ASCII torus of the year, whoami, a scrolling activity graph, posts, languages and top repositories in boxed panes, over a tmux status bar">
+  <img src="docs/preview-light.png" alt="afterglow on github.com/raelsei: a spinning ASCII torus of the year, whoami, a scrolling activity graph, posts, languages and top repositories in boxed panes, over a powerline status line">
 </picture>
 
 # afterglow
 
 Your GitHub profile as a phosphor terminal dashboard: the year spinning as an
 ASCII torus, live panes in the manner of `btop`, your newest posts, and your
-links as tmux windows. Every pane is an animated SVG redrawn daily by a GitHub
+links along a powerline status line. Every pane is an animated SVG redrawn daily by a GitHub
 Action, and every figure in it is fetched, never typed.
 
 Live on [github.com/raelsei](https://github.com/raelsei).
@@ -23,8 +23,8 @@ Live on [github.com/raelsei](https://github.com/raelsei).
 | `langs`    | Languages of the public repositories you committed to this year, weighted by your commits.                     |
 | `top`      | Those repositories, most commits first. Every row is its own link.                                             |
 
-Below them, a tmux status line: your session name, one window per link, and
-the day it was drawn.
+Below them, a powerline status line as tmux and vim themes draw it: your
+session name, one segment per link, and the day it was drawn.
 
 ## Layout
 
@@ -179,12 +179,12 @@ included, because an `<img>` gives a screen reader its alt and nothing else.
 | `layout`    | see [Layout](#layout)                    | The grid: one row per line, one or two panes each, `bar` for the status line.      |
 | `density`   | `full`                                   | `compact` makes every pane compact; `:full` or `:compact` after a name overrides.  |
 | `whoami`    | name, bio, company, location             | Lines for `whoami`. The first is your name; blank lines are kept.                  |
-| `session`   | your login                               | The tmux session name in the status bar.                                           |
+| `session`   | your login                               | The session name at the left of the status line.                                   |
 | `feed`      | none                                     | RSS or Atom feed. Without it there is no posts pane.                               |
 | `feed_note` | none                                     | `#` comment lines at the top of the posts pane.                                    |
 | `posts`     | `5`                                      | How many posts, 1 to 20.                                                           |
 | `posts_url` | the feed's site                          | Where "all of them at" points.                                                     |
-| `links`     | website and social accounts              | `label url` per line, one tmux window each.                                        |
+| `links`     | website and social accounts              | `label url` per line, one status-line segment each, labelled by `label`.           |
 | `repos`     | `5`                                      | How many repositories `top` lists.                                                 |
 | `out`       | `afterglow`                              | Where the SVGs are written.                                                        |
 | `readme`    | `README.md`                              | Updated between the markers. Empty leaves it alone; the block is always in `<out>/README.block.md`. |
@@ -210,7 +210,7 @@ streak rules, the layout parser, row placement and the README markers; `bun run 
 
 The luminance ramp and the idea are Andy Sloane's
 [donut.c](https://www.a1k0n.net/2011/07/20/donut-math.html); the panes owe
-their manners to [btop](https://github.com/aristocratos/btop) and tmux. Google
+their manners to [btop](https://github.com/aristocratos/btop), tmux and powerline. Google
 Sans Code is © The Google Sans Code Project Authors, under the
 [SIL Open Font License](fonts/OFL.txt). The phosphor palette is
 [koray.dev](https://koray.dev)'s.

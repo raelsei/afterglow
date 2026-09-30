@@ -661,44 +661,60 @@ export function langsPane(profile: Profile, href: string, compact: boolean): Pan
 // ── status bar ──────────────────────────────────────────────────────────────
 
 /**
- * tmux's status line: the session, one window per link, and the date the
- * dashboard was drawn, filling out to the grid's full width. Each window is
- * its own image so it can be its own link.
+ * A powerline status line, the way tmux and vim themes draw it: the session in
+ * an accent segment with an arrow end, one quiet segment per link split by
+ * thin chevrons, and the day it was drawn in an accent segment on the right,
+ * the base filling the width between. Each link is its own image so it can
+ * be its own link; each image paints the colour its neighbour needs behind
+ * an arrow, so the segments meet as one line.
  */
-export function statusBar(session: string, links: Link[], drawn: string, fullWidth: number, credit: string): Image[] {
-  const chip = (name: string, text: Span[], alt: string, href: string | undefined, fixedWidth?: number, inset = { left: 0, right: 0 }): Image => {
-    const cols = text.reduce((n, span) => n + columns(span.text), 0);
-    const width = fixedWidth ?? Math.ceil(inset.left + (cols + 2) * TEXT.advance + inset.right);
-    return {
-      name,
-      width,
-      alt,
-      href,
-      render: (palette) =>
-        piece({
-          width,
-          bands: 1,
-          palette,
-          chrome: { sides: false },
-          title: alt,
-          draw: (ink) => ({
-            body:
-              `<rect x="${inset.left}" y="3" width="${width - inset.left - inset.right}" height="${BAND - 6}" fill="${palette.accent}"/>` +
-              (fixedWidth ? ink.lineEnd(width - inset.right - TEXT.advance, TEXT.baseline, text) : ink.line(inset.left + TEXT.advance, TEXT.baseline, text)),
-          }),
-        }),
-    };
-  };
+export function statusBar(session: string, links: Link[], drawn: string, fullWidth: number, credit: string, home?: string): Image[] {
+  const top = 3;
+  const bottom = BAND - 3;
+  const middle = BAND / 2;
+  const arrow = 11;
+  const pad = TEXT.advance;
+  const segment = (name: string, width: number, alt: string, href: string | undefined, draw: (ink: Ink, palette: Palette) => string): Image => ({
+    name,
+    width,
+    alt,
+    href,
+    render: (palette) => piece({ width, bands: 1, palette, chrome: { sides: false }, title: alt, draw: (ink) => ({ body: draw(ink, palette) }) }),
+  });
+  const rect = (x: number, width: number, fill: string) => `<rect x="${+x.toFixed(2)}" y="${top}" width="${+width.toFixed(2)}" height="${bottom - top}" fill="${fill}"/>`;
 
+  const sessionWidth = Math.ceil(INSET + pad + columns(session) * TEXT.advance + pad + arrow);
   const images: Image[] = [
-    chip(`bar-session-${hash(session)}`, [{ text: `[${session}]`, tone: "onAccent", bold: true }], `tmux session ${session}`, undefined, undefined, { left: INSET, right: 0 }),
-    ...links.map((link, i) =>
-      chip(`bar-${hash(link.label, link.url)}`, [{ text: `${i}:${link.label}${i === 0 ? "*" : ""}`, tone: "onAccent" }], `${link.label}: ${link.url.replace(/^mailto:/, "").replace(/^https?:\/\//, "")}`, link.url),
+    segment(`bar-session-${hash(session)}`, sessionWidth, `Session ${session}`, home, (ink, palette) =>
+      rect(sessionWidth - arrow, arrow, palette.border) +
+      rect(INSET, sessionWidth - arrow - INSET, palette.accent) +
+      `<path d="M${sessionWidth - arrow} ${top}L${sessionWidth} ${middle}L${sessionWidth - arrow} ${bottom}Z" fill="${palette.accent}"/>` +
+      ink.line(INSET + pad, TEXT.baseline, [{ text: session, tone: "onAccent", bold: true }]),
     ),
+    ...links.map((link, i) => {
+      const last = i === links.length - 1;
+      const width = Math.ceil(pad + columns(link.label) * TEXT.advance + pad + (last ? 0 : 6));
+      const shown = link.url.replace(/^mailto:/, "").replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
+      return segment(`bar-${hash(link.label, link.url)}`, width, `${link.label}: ${shown}`, link.url, (ink, palette) =>
+        rect(0, width, palette.border) +
+        ink.line(pad, TEXT.baseline, [{ text: link.label }]) +
+        (last ? "" : `<path d="M${width - 6} ${top + 3}L${width - 1} ${middle}L${width - 6} ${bottom - 3}" fill="none" stroke="${palette.muted}" stroke-width="1.2"/>`),
+      );
+    }),
   ];
+
+  // The base runs out to the right edge, where the date sits in its own accent segment.
+  const label = `drawn ${drawn}`;
+  const clock = Math.ceil(pad + columns(label) * TEXT.advance + pad + INSET);
   const used = images.reduce((n, image) => n + image.width, 0);
-  const clock: Span[] = [{ text: `drawn ${drawn}`, tone: "onAccent" }];
-  const least = Math.ceil((columns(clock[0]!.text) + 2) * TEXT.advance + INSET);
-  images.push(chip("bar-clock", clock, `Drawn by afterglow on ${drawn}`, credit, Math.max(least, fullWidth - used), { left: 0, right: INSET }));
+  const width = Math.max(clock + arrow + pad * 2, fullWidth - used);
+  images.push(
+    segment("bar-clock", width, `Drawn by afterglow on ${drawn}`, credit, (ink, palette) =>
+      rect(0, width - clock, palette.border) +
+      `<path d="M${width - clock} ${top}L${width - clock - arrow} ${middle}L${width - clock} ${bottom}Z" fill="${palette.accent}"/>` +
+      rect(width - clock, clock - INSET, palette.accent) +
+      ink.lineEnd(width - INSET - pad, TEXT.baseline, [{ text: label, tone: "onAccent" }]),
+    ),
+  );
   return images;
 }

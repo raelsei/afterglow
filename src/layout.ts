@@ -11,7 +11,7 @@ export type LayoutRow = { bar: true } | { bar?: false; cells: { id: PaneId; comp
 /**
  * Reads the `layout` input: one grid row per line, one or two panes each, a
  * `:compact` or `:full` suffix to override `density` for one pane, and `bar`
- * alone on a line for the tmux status line. `|` may separate cells for
+ * alone on a line for the status line. `|` may separate cells for
  * readability; blank lines and `#` comments are skipped. A pane left out is
  * off.
  */

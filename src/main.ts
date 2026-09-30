@@ -79,7 +79,7 @@ async function main(): Promise<void> {
   let panes = 0;
   for (const row of layout) {
     if (row.bar) {
-      rows.push({ lines: [statusBar(input("session") || profile.login, links, drawn, FULL, REPO)] });
+      rows.push({ lines: [statusBar(input("session") || profile.login, links, drawn, FULL, REPO, links[0]?.url)] });
       continue;
     }
     // A pane with nothing to show (posts without a feed) drops out; its partner takes the row.

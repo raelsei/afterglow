@@ -17,7 +17,7 @@ inputs:
     default: phosphor
   layout:
     description: |
-      The grid, one row per line: one pane (spans both columns) or two (share one height), from year, whoami, activity, posts, langs, top; `bar` alone on a line for the tmux status line. A pane left out is off; one with no data (posts without a feed) drops out. Add :compact or :full to a name to size that pane.
+      The grid, one row per line: one pane (spans both columns) or two (share one height), from year, whoami, activity, posts, langs, top; `bar` alone on a line for the status line. A pane left out is off; one with no data (posts without a feed) drops out. Add :compact or :full to a name to size that pane.
     default: |
       year whoami
       activity posts
@@ -30,7 +30,7 @@ inputs:
     description: Lines for the whoami pane. The first is your name, set large; blank lines are kept. Defaults to your GitHub name, bio, company and location.
     default: ""
   session:
-    description: tmux session name at the left of the status bar. Defaults to your login.
+    description: Session name at the left of the status line. Defaults to your login.
     default: ""
   feed:
     description: RSS or Atom feed URL for the posts pane; each post is its own link.
@@ -45,7 +45,7 @@ inputs:
     description: Where the "all of them at" line points. Defaults to the site the feed names.
     default: ""
   links:
-    description: One `label url` per line, shown as tmux windows in the status bar. Defaults to the website and social accounts on your GitHub profile.
+    description: One `label url` per line, one status-line segment each, labelled by `label`. Defaults to the website and social accounts on your GitHub profile.
     default: ""
   repos:
     description: How many repositories the top pane lists, 1 to 20.
