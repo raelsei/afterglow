@@ -12,19 +12,21 @@ export interface ImageRef {
 }
 
 /**
- * One row of the grid. `float` is the left column; `lines` fill the right
- * column beside it, one line of images each. Where two columns do not fit,
- * GitHub drops the lines below the float, so the grid becomes one column.
+ * One row of the grid. `float` takes one column, on `side`; `lines` fill the
+ * other column beside it, one line of images each. Where two columns do not
+ * fit, GitHub drops the lines below the float, so the grid becomes one column.
  */
 export interface Row {
   float?: ImageRef;
+  side?: "left" | "right";
   lines: ImageRef[][];
 }
 
 export function readmeBlock(rows: Row[], base: string): string {
   const url = (file: string) => escapeXml(`${base.replace(/\/+$/, "")}/${file}`);
-  const markup = (image: ImageRef, align: "left" | "top") => {
-    // align="left" floats the image, and GitHub pads it 20px: the gutter.
+  const markup = (image: ImageRef, align: "left" | "right" | "top") => {
+    // align="left" or "right" floats the image, and GitHub pads it 20px on the
+    // inner side: the gutter.
     // align="top" drops the gap an inline image leaves for descenders, so the
     // lines of a column meet exactly. No height attribute: on a narrow screen
     // the width shrinks and the height must follow it.
@@ -36,7 +38,7 @@ export function readmeBlock(rows: Row[], base: string): string {
   const body = rows
     .map((row) => {
       const lines = row.lines.map((line) => line.map((image) => markup(image, "top")).join("")).join("<br>\n");
-      return `${row.float ? markup(row.float, "left") : ""}${lines}<br clear="all">`;
+      return `${row.float ? markup(row.float, row.side ?? "left") : ""}${lines}<br clear="all">`;
     })
     .join("\n");
   return `${START}\n<p>\n${body}\n</p>\n${END}`;

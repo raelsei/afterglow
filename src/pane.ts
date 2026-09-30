@@ -8,10 +8,18 @@ import type { Palette } from "./theme";
  * and 28px lands on the 21px line box its paragraphs impose.
  */
 export const BAND = 28;
-/** A pane in a two-column row. Two of them plus GitHub's 20px image padding fill the 846px README column. */
-export const HALF = 400;
+/** GitHub's README column at viewports of 1280px and up. */
+export const COLUMN = 846;
+/** A pane in a two-column row. Two of them plus GitHub's 20px image padding
+ *  fill the column, 6px to spare. 410 is also the widest pane a 390px phone
+ *  shrinks to 308 with its 28px bands still on GitHub's 21px line box. */
+export const HALF = 410;
 export const GUTTER = 20;
 export const FULL = HALF * 2 + GUTTER;
+/** A right-floated pane is anchored to the column's right edge, not to its
+ *  neighbour; this much trailing room puts it where the right column sits in
+ *  every other row, and still leaves 2px for the list flowing beside it. */
+export const RIGHT_MARGIN = 4;
 /** Boxes sit 4px inside their image, so the 20px gutter plus 8 makes 28 between columns, the same as between rows. */
 export const INSET = 4;
 /** Where text starts inside an image. */
@@ -82,8 +90,18 @@ export function baseline(band: number): number {
 }
 
 /** One image: box chrome, whatever `draw` puts inside, and the font subset for both. */
-export function piece(options: { width: number; bands: number; palette: Palette; chrome: Chrome; title: string; draw: (ink: Ink) => Drawn }): string {
+export function piece(options: {
+  width: number;
+  bands: number;
+  palette: Palette;
+  chrome: Chrome;
+  title: string;
+  draw: (ink: Ink) => Drawn;
+  /** Transparent room after the pane, inside the same image. */
+  margin?: number;
+}): string {
   const { width, bands, palette, chrome } = options;
+  const canvas = width + (options.margin ?? 0);
   const height = bands * BAND;
   const ink = new Ink();
   const drawn = options.draw(ink);
@@ -126,7 +144,7 @@ export function piece(options: { width: number; bands: number; palette: Palette;
     `.link{fill:none;stroke:${palette.muted};stroke-width:1.2;stroke-dasharray:0 3;stroke-linecap:round}` +
     (drawn.css ?? "");
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas}" height="${height}" viewBox="0 0 ${canvas} ${height}" role="img">` +
     `<title>${escapeXml(options.title)}</title><style>${css}</style>${drawn.defs ? `<defs>${drawn.defs}</defs>` : ""}` +
     `${path ? `<path class="box" d="${path}"/>` : ""}${labels}${drawn.body}</svg>\n`
   );

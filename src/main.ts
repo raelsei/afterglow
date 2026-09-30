@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fetchFeed } from "./feed";
 import { fetchProfile, type Link } from "./github";
-import { arrange } from "./layout";
+import { DEFAULT_LAYOUT, parseLayout, placeRow, type PlacedRow } from "./layout";
 import { FULL } from "./pane";
 import { graphPane, langsPane, postsPane, statusBar, topPane, whoamiPane, yearPane, type Pane } from "./panes";
 import { injectBlock, readmeBlock } from "./readme";
@@ -12,7 +12,6 @@ import { THEMES } from "./theme";
 
 const REPO = "https://github.com/raelsei/afterglow";
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const PANES = ["year", "whoami", "activity", "posts", "langs", "top"];
 
 /** An action input (`INPUT_<NAME>`), or `--name value` on the command line. */
 function input(name: string): string {
@@ -35,9 +34,9 @@ async function main(): Promise<void> {
   const themeName = input("theme") || "phosphor";
   const theme = THEMES[themeName];
   if (!theme) throw new Error(`theme: "${themeName}" is not one of ${Object.keys(THEMES).join(", ")}`);
-  const order = (input("panes") || PANES.join(" ")).split(/[\s,]+/).filter(Boolean);
-  const unknown = order.filter((id) => !PANES.includes(id));
-  if (unknown.length) throw new Error(`panes: ${unknown.join(", ")} unknown; choose from ${PANES.join(", ")}`);
+  const density = input("density") || "full";
+  if (density !== "full" && density !== "compact") throw new Error(`density: "${density}" is neither full nor compact`);
+  const layout = parseLayout(input("layout") || DEFAULT_LAYOUT, density);
   const outDir = input("out") || "afterglow";
   const readmePath = input("readme");
   const repository = process.env.GITHUB_REPOSITORY;
@@ -61,23 +60,34 @@ async function main(): Promise<void> {
   // The biggest things on the page lead to the writing when there is some.
   const home = (feed && archive) || links[0]?.url || `https://github.com/${profile.login}`;
 
-  const panes: Pane[] = [];
-  for (const id of order) {
-    let pane: Pane | null = null;
-    if (id === "year") pane = yearPane(profile, home);
-    else if (id === "whoami") pane = whoamiPane(profile, stats, inputLines("whoami"), links[0]?.url);
-    else if (id === "activity") pane = graphPane(profile, `https://github.com/${profile.login}`);
-    else if (id === "posts" && feed) {
+  const build = (id: string, compact: boolean): Pane | null => {
+    if (id === "year") return yearPane(profile, home, compact);
+    if (id === "whoami") return whoamiPane(profile, stats, inputLines("whoami"), links[0]?.url, compact);
+    if (id === "activity") return graphPane(profile, home, compact);
+    if (id === "posts") {
+      if (!feed) return null;
       const note = inputLines("feed_note").flatMap((line) => (line ? wrap(line, 40, 3) : []));
-      pane = postsPane(feed, { count: count("posts", 5), note, archive, source: archive ?? feedUrl });
-    } else if (id === "langs") pane = langsPane(profile, `https://github.com/${profile.login}?tab=repositories`);
-    else if (id === "top") pane = topPane(profile, count("repos", 5));
-    if (pane) panes.push(pane);
-  }
+      return postsPane(feed, { count: count("posts", 5), note, archive, source: archive ?? feedUrl, compact });
+    }
+    if (id === "langs") return langsPane(profile, `https://github.com/${profile.login}?tab=repositories`, compact);
+    return topPane(profile, count("repos", 5), compact);
+  };
 
   const now = new Date();
   const drawn = `${now.getUTCDate()} ${MONTHS[now.getUTCMonth()]} ${now.getUTCFullYear()}`;
-  const rows = [...arrange(panes), { lines: [statusBar(input("session") || profile.login, links, drawn, FULL, REPO)] }];
+  const rows: PlacedRow[] = [];
+  let panes = 0;
+  for (const row of layout) {
+    if (row.bar) {
+      rows.push({ lines: [statusBar(input("session") || profile.login, links, drawn, FULL, REPO)] });
+      continue;
+    }
+    // A pane with nothing to show (posts without a feed) drops out; its partner takes the row.
+    const built = row.cells.map((cell) => build(cell.id, cell.compact)).filter((pane): pane is Pane => pane !== null);
+    if (built.length === 0) continue;
+    rows.push(placeRow(built));
+    panes += built.length;
+  }
 
   mkdirSync(outDir, { recursive: true });
   let files = 0;
@@ -98,7 +108,7 @@ async function main(): Promise<void> {
     if (after !== before) writeFileSync(readmePath, after);
     console.log(after === before ? `${readmePath}: unchanged` : `${readmePath}: block updated`);
   }
-  console.log(`afterglow: ${profile.login}, ${stats.total} contributions, ${panes.length} panes, ${files} files in ${outDir}/`);
+  console.log(`afterglow: ${profile.login}, ${stats.total} contributions, ${panes} panes, ${files} files in ${outDir}/`);
 }
 
 main().catch((error: unknown) => {

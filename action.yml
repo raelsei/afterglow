@@ -15,9 +15,17 @@ inputs:
   theme:
     description: phosphor (green), amber, ice (blue-white) or github (GitHub's own greens).
     default: phosphor
-  panes:
-    description: Which panes, in reading order, from year, whoami, activity, posts, langs, top. Panes without data (posts without a feed) are skipped.
-    default: year whoami activity posts langs top
+  layout:
+    description: |
+      The grid, one row per line: one pane (spans both columns) or two (share one height), from year, whoami, activity, posts, langs, top; `bar` alone on a line for the tmux status line. A pane left out is off; one with no data (posts without a feed) drops out. Add :compact or :full to a name to size that pane.
+    default: |
+      year whoami
+      activity posts
+      langs top
+      bar
+  density:
+    description: full or compact. Compact panes take about half the height; `:full` or `:compact` on a pane overrides.
+    default: full
   whoami:
     description: Lines for the whoami pane. The first is your name, set large; blank lines are kept. Defaults to your GitHub name, bio, company and location.
     default: ""

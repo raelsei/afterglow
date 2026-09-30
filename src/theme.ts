@@ -22,7 +22,8 @@ export interface Theme {
 /**
  * Named after the phosphors CRTs were coated with. Text tones clear 4.5:1 on
  * GitHub's own grounds, #0d1117 in dark mode and #ffffff in light, because
- * every image here sits on a transparent ground.
+ * every image here sits on a transparent ground. Light ramps keep level 0 at
+ * 2:1 and level 1 at 3:1 on white, so the quiet half of the torus still reads.
  */
 export const THEMES: Record<string, Theme> = {
   // P1 green, in koray.dev's Phosphor palette.
@@ -43,7 +44,7 @@ export const THEMES: Record<string, Theme> = {
       accent: "#4c7100",
       border: "#c9d2ce",
       onAccent: "#ffffff",
-      levels: ["#c6cfcb", "#9db766", "#6d9419", "#4c7100", "#263a00"],
+      levels: ["#a9b4af", "#7c9a3e", "#5e861a", "#4c7100", "#263a00"],
       glow: false,
       afterglow: [0.18, 0.07],
     },
@@ -66,7 +67,7 @@ export const THEMES: Record<string, Theme> = {
       accent: "#8f5b00",
       border: "#ddd3c4",
       onAccent: "#ffffff",
-      levels: ["#d9cfc0", "#e0b86a", "#c28a10", "#8f5b00", "#4d3000"],
+      levels: ["#b9ab97", "#b0831a", "#9c6a00", "#8f5b00", "#4d3000"],
       glow: false,
       afterglow: [0.18, 0.07],
     },
@@ -89,7 +90,7 @@ export const THEMES: Record<string, Theme> = {
       accent: "#075985",
       border: "#cbd6dd",
       onAccent: "#ffffff",
-      levels: ["#c9d5dc", "#8ec5e2", "#3f94bf", "#075985", "#04324b"],
+      levels: ["#a8b6bf", "#4a93bb", "#2f7aa6", "#075985", "#04324b"],
       glow: false,
       afterglow: [0.18, 0.07],
     },
@@ -112,7 +113,7 @@ export const THEMES: Record<string, Theme> = {
       accent: "#1a7f37",
       border: "#d1d9e0",
       onAccent: "#ffffff",
-      levels: ["#d1d9e0", "#9be9a8", "#40c463", "#30a14e", "#216e39"],
+      levels: ["#aeb8c2", "#3f9f55", "#2c8a43", "#1a7f37", "#0f5323"],
       glow: false,
       afterglow: [0.18, 0.07],
     },

@@ -26,8 +26,45 @@ Live on [github.com/raelsei](https://github.com/raelsei).
 Below them, a tmux status line: your session name, one window per link, and
 the day it was drawn.
 
-Panes pair up into rows of two equal-height columns, so no row leaves half the
-page empty. On a narrow screen the columns fall into one, in reading order.
+## Layout
+
+`layout` is the grid, one row per line. A row holds one pane, which spans both
+columns, or two, which share one height so no row leaves half the page empty.
+A pane you leave out is off. `bar` on a line of its own places the status line.
+
+```yaml
+layout: |
+  year      | whoami
+  activity  | posts
+  langs     | top
+  bar
+```
+
+That is the default. Every pane also has a compact form, about half the
+height: `density: compact` makes them all compact, and `:compact` or `:full`
+after a name overrides it for that pane. The compact default above fits in one
+laptop screen.
+
+```yaml
+density: compact
+layout: |
+  year:full | whoami:full   # the first row at full size, the rest compact
+  posts     | activity
+  top
+  bar
+```
+
+GitHub's Markdown leaves one layout tool, floating images, and it shapes what
+a row can be:
+
+- A list (`posts`, `top`) is one image per line so each line can link. It
+  flows beside the pane in the other column, on either side.
+- Two lists in one row do not fit that way, so the left one is drawn as a
+  single image: its lines stop being separate links and the pane links as a
+  whole.
+- On a narrow screen the columns fall into one. The pane that floats comes
+  first, so a row written `posts | activity` shows `activity` first on a
+  phone.
 
 ## How a year becomes a donut
 
@@ -52,7 +89,7 @@ from the Markdown, and an SVG loaded as an image may not fetch anything. So:
 - The layout is floats. A pane with `align="left"` gets GitHub's 20px padding,
   which is the gutter; `<br clear="all">` ends a row. Everything sits on a 28px
   band, the smallest pitch a phone still shows without gaps once GitHub scales
-  a 400px pane into its column.
+  a 410px pane into its column.
 - Lists are one image per line so each line can be a link, and the box around
   them is drawn a slice at a time.
 - Each image ships dark and light files, and `<picture>` follows the viewer's
@@ -95,7 +132,7 @@ from the Markdown, and an SVG loaded as an image may not fetch anything. So:
        steps:
          - uses: actions/checkout@v5
 
-         - uses: raelsei/afterglow@v2
+         - uses: raelsei/afterglow@v3
            with:
              theme: phosphor
              feed: https://your.site/rss.xml
@@ -139,7 +176,8 @@ included, because an `<img>` gives a screen reader its alt and nothing else.
 | `user`      | repository owner                         | Whose profile is drawn.                                                            |
 | `token`     | `github.token`                           | Reads the profile over GraphQL. Private repositories never appear.                 |
 | `theme`     | `phosphor`                               | `phosphor` (P1 green), `amber` (P3), `ice` (P4 blue-white) or `github`.            |
-| `panes`     | `year whoami activity posts langs top`   | Which panes, in reading order.                                                     |
+| `layout`    | see [Layout](#layout)                    | The grid: one row per line, one or two panes each, `bar` for the status line.      |
+| `density`   | `full`                                   | `compact` makes every pane compact; `:full` or `:compact` after a name overrides.  |
 | `whoami`    | name, bio, company, location             | Lines for `whoami`. The first is your name; blank lines are kept.                  |
 | `session`   | your login                               | The tmux session name in the status bar.                                           |
 | `feed`      | none                                     | RSS or Atom feed. Without it there is no posts pane.                               |
@@ -165,7 +203,7 @@ GITHUB_TOKEN=$(gh auth token) bun src/main.ts --user raelsei --theme amber --out
 
 Every input is also a flag (`--feed-note`, `--posts-url`, …) or an
 `INPUT_<NAME>` variable. `bun test` covers the feed parser, line wrapping, the
-streak rules, the row layout and the README markers; `bun run build` rebuilds
+streak rules, the layout parser, row placement and the README markers; `bun run build` rebuilds
 `dist/index.mjs`, which is what the action runs and is committed on purpose.
 
 ## Credits

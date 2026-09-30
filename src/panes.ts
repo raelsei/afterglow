@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Feed } from "./feed";
 import type { Day, Link, Profile } from "./github";
-import { BAND, INSET, Ink, PAD, TEXT, baseline, piece, type Chrome, type Drawn, type Span } from "./pane";
+import { BAND, HALF, INSET, Ink, PAD, TEXT, baseline, piece, type Chrome, type Drawn, type Span } from "./pane";
 import type { YearStats } from "./stats";
 import { columns, escapeXml, fit, wrap } from "./text";
 import type { Palette } from "./theme";
@@ -11,6 +11,8 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 const WEEKDAYS = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
 /** LED pitch of the dot-matrix graphs: two dots per character cell. */
 const DOT = TEXT.advance / 2;
+/** Unlit LEDs: present enough to read as a panel, quiet enough not to crowd it. */
+const UNLIT = 0.3;
 
 export interface DrawContext {
   ink: Ink;
@@ -25,7 +27,7 @@ export interface Piece {
   name: string;
   alt: string;
   href?: string;
-  /** Height in 28px bands before the layout stretches it. */
+  /** Height in 28px bands before the layout stretches it; 0 until measured. */
   bands: number;
   chrome: Chrome;
   draw(context: DrawContext): Drawn;
@@ -48,14 +50,14 @@ export interface Image {
 }
 
 /** Places a piece at a size and binds everything its SVG needs. */
-export function place(item: Piece, width: number, bands: number): Image {
+export function place(item: Piece, width: number, bands: number, margin = 0): Image {
   return {
     name: item.name,
-    width,
+    width: width + margin,
     alt: item.alt,
     href: item.href,
     render: (palette) =>
-      piece({ width, bands, palette, chrome: item.chrome, title: item.alt, draw: (ink) => item.draw({ ink, width, bands, palette }) }),
+      piece({ width, bands, margin, palette, chrome: item.chrome, title: item.alt, draw: (ink) => item.draw({ ink, width, bands, palette }) }),
   };
 }
 
@@ -64,6 +66,10 @@ export const hash = (...parts: string[]): string => createHash("sha1").update(pa
 function dayMonthYear(iso: string): string {
   const [year, month, day] = iso.split("-").map(Number);
   return `${day} ${MONTHS[month! - 1]} ${year}`;
+}
+
+function monthYear(iso: string): string {
+  return `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`;
 }
 
 /** Content columns of a pane `width` px wide. */
@@ -80,9 +86,22 @@ function dotMask(id: string, x: number, y: number, width: number, height: number
   );
 }
 
+/** A row of LEDs: the unlit panel, then `lit` of them in `color` from the left. */
+function ledBar(id: string, x: number, y: number, dots: number, lit: number, color: string, palette: Palette): Drawn {
+  return {
+    defs: dotMask(id, x, y, dots * DOT, DOT * 2, y),
+    body:
+      `<rect x="${x}" y="${y}" width="${+(dots * DOT).toFixed(2)}" height="${DOT * 2}" fill="${palette.border}" opacity="${UNLIT}" mask="url(#${id})"/>` +
+      `<rect x="${x}" y="${y}" width="${+(lit * DOT).toFixed(2)}" height="${DOT * 2}" fill="${color}" mask="url(#${id})"/>`,
+  };
+}
+
 // ── year ────────────────────────────────────────────────────────────────────
 
-const TORUS_CELL = { size: 10, width: 6, height: 10, baseline: 8 } as const;
+const TORUS_FULL = { size: 10, width: 6, height: 10, baseline: 8 } as const;
+/** Compact trades size for resolution: finer cells, so a smaller torus keeps its detail. */
+const TORUS_COMPACT = { size: 7, width: 4.2, height: 7, baseline: 5.6 } as const;
+type Cell = typeof TORUS_FULL | typeof TORUS_COMPACT;
 const TORUS_FRAMES = 120;
 const TORUS_PERIOD = 15;
 const torusCache = new Map<string, TorusFrame[]>();
@@ -93,55 +112,60 @@ const torusCache = new Map<string, TorusFrame[]>();
  * image proxy serves it as is. Like a phosphor screen, a frame lingers two
  * more slots at the palette's afterglow, which also smooths 8 fps motion.
  */
-export function yearPane(profile: Profile, href: string): Pane {
+export function yearPane(profile: Profile, href: string, compact: boolean): Pane {
   const days = profile.weeks.flat().filter((day): day is Day => day !== null);
   const span = days.length ? `${monthYear(days[0]!.date)} – ${monthYear(days.at(-1)!.date)}` : "";
+  const cell: Cell = compact ? TORUS_COMPACT : TORUS_FULL;
+  const legend = compact ? 0 : 1;
+  const destination = href.replace(/^https?:\/\//, "").replace(/\/$/, "");
   return {
     kind: "single",
     pieces: [
       {
-        name: "year",
-        alt: `A spinning ASCII torus made of ${profile.login}'s contributions over the last year: weeks around the ring, days around the tube, busier days raised and brighter`,
+        name: compact ? "year-compact" : "year",
+        alt: `A spinning ASCII torus made of ${profile.login}'s contributions over the last year: weeks around the ring, days around the tube, busier days raised and brighter. Opens ${destination}.`,
         href,
-        bands: 13,
+        bands: compact ? 8 : 13,
         chrome: { top: { title: "year", meta: span }, bottom: true },
         draw: ({ ink, width, bands, palette }) => {
-          const cols = Math.floor((width - INSET * 2 - 16) / TORUS_CELL.width);
-          const rows = Math.floor(((bands - 3) * BAND - 8) / TORUS_CELL.height);
+          const area = (bands - 2 - legend) * BAND;
+          const cols = Math.floor((width - INSET * 2 - 16) / cell.width);
+          const rows = Math.floor((area - 8) / cell.height);
           const key = `${cols}x${rows}`;
           let frames = torusCache.get(key);
           if (!frames) {
-            frames = renderTorus(profile, { cols, rows, frames: TORUS_FRAMES, cellAspect: TORUS_CELL.width / TORUS_CELL.height });
+            frames = renderTorus(profile, { cols, rows, frames: TORUS_FRAMES, cellAspect: cell.width / cell.height });
             torusCache.set(key, frames);
           }
           ink.regular += RAMP;
-          const left = (width - cols * TORUS_CELL.width) / 2;
-          const top = BAND + ((bands - 3) * BAND - rows * TORUS_CELL.height) / 2;
-          const body = torusFrames(frames, cols, rows, left, top);
+          const left = (width - cols * cell.width) / 2;
+          const top = BAND + (area - rows * cell.height) / 2;
+          const body = torusFrames(frames, cols, rows, left, top, cell);
 
-          // Legend, in GitHub's own words: less to more.
-          const legendY = baseline(bands - 2);
-          let legend = ink.line(PAD, legendY, [{ text: "less", tone: "muted" }]);
-          const swatchX = PAD + 5 * TEXT.advance;
-          legend += palette.levels
-            .map((color, level) => `<rect x="${swatchX + level * 13}" y="${legendY - 10}" width="10" height="10" rx="2" fill="${color}"/>`)
-            .join("");
-          legend += ink.line(swatchX + 5 * 13 + 4, legendY, [{ text: "more", tone: "muted" }]);
-          legend += ink.lineEnd(width - PAD, legendY, [{ text: `${profile.weeks.length} weeks × 7 days`, tone: "muted" }]);
+          // The legend, in GitHub's own words: less to more.
+          let legendMarkup = "";
+          if (legend) {
+            const y = baseline(bands - 2);
+            const swatchX = PAD + 5 * TEXT.advance;
+            legendMarkup =
+              ink.line(PAD, y, [{ text: "less", tone: "muted" }]) +
+              palette.levels.map((color, level) => `<rect x="${swatchX + level * 13}" y="${y - 10}" width="10" height="10" rx="2" fill="${color}"/>`).join("") +
+              ink.line(swatchX + 5 * 13 + 4, y, [{ text: "more", tone: "muted" }]) +
+              ink.lineEnd(width - PAD, y, [{ text: `${profile.weeks.length} weeks × 7 days`, tone: "muted" }]);
+          }
 
           const slot = TORUS_PERIOD / frames.length;
           const step = 100 / frames.length;
           const [trail, fade] = palette.afterglow;
-          const glow = palette.glow
-            ? `<filter id="glow" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="2.2" result="blur"/>` +
-              `<feComponentTransfer in="blur" result="halo"><feFuncA type="linear" slope="0.7"/></feComponentTransfer>` +
-              `<feMerge><feMergeNode in="halo"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`
-            : "";
           return {
-            defs: glow,
-            body: (palette.glow ? `<g filter="url(#glow)">${body}</g>` : body) + legend,
+            defs: palette.glow
+              ? `<filter id="glow" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="${compact ? 1.6 : 2.2}" result="blur"/>` +
+                `<feComponentTransfer in="blur" result="halo"><feFuncA type="linear" slope="0.7"/></feComponentTransfer>` +
+                `<feMerge><feMergeNode in="halo"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`
+              : "",
+            body: (palette.glow ? `<g filter="url(#glow)">${body}</g>` : body) + legendMarkup,
             css:
-              `.t{font-size:${TORUS_CELL.size}px}` +
+              `.t{font-size:${cell.size}px}` +
               palette.levels.map((color, level) => `.l${level}{fill:${color}}`).join("") +
               `.frame{visibility:hidden;animation:frame ${TORUS_PERIOD}s step-end infinite}` +
               `@keyframes frame{0%{visibility:visible;opacity:1}${+step.toFixed(4)}%{opacity:${trail}}` +
@@ -155,11 +179,7 @@ export function yearPane(profile: Profile, href: string): Pane {
   };
 }
 
-function monthYear(iso: string): string {
-  return `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`;
-}
-
-function torusFrames(frames: TorusFrame[], cols: number, rows: number, left: number, top: number): string {
+function torusFrames(frames: TorusFrame[], cols: number, rows: number, left: number, top: number, cell: Cell): string {
   // Reduced motion holds the pose that shows the most of the year.
   const lit = frames.map((frame) => frame.glyph.reduce((n, g) => n + (g >= 0 ? 1 : 0), 0));
   const poster = lit.indexOf(Math.max(...lit));
@@ -184,8 +204,8 @@ function torusFrames(frames: TorusFrame[], cols: number, rows: number, left: num
           const i = r * cols + c;
           run += frame.glyph[i]! >= 0 && frame.level[i] === level ? RAMP[frame.glyph[i]!] : " ";
         }
-        const x = +(left + first * TORUS_CELL.width).toFixed(2);
-        const y = +(top + r * TORUS_CELL.height + TORUS_CELL.baseline).toFixed(2);
+        const x = +(left + first * cell.width).toFixed(2);
+        const y = +(top + r * cell.height + cell.baseline).toFixed(2);
         tspans += `<tspan x="${x}" y="${y}">${escapeXml(run)}</tspan>`;
       }
       if (tspans) layers += `<text class="t l${level}" xml:space="preserve">${tspans}</text>`;
@@ -197,22 +217,58 @@ function torusFrames(frames: TorusFrame[], cols: number, rows: number, left: num
 
 // ── whoami ──────────────────────────────────────────────────────────────────
 
-export function whoamiPane(profile: Profile, stats: YearStats, who: string[], href: string | undefined): Pane {
+export function whoamiPane(profile: Profile, stats: YearStats, who: string[], href: string | undefined, compact: boolean): Pane {
   const name = who[0] ?? profile.name ?? profile.login;
-  const figures: [string, Span[]][] = [];
+  const identity = who.length > 1 ? who.slice(1) : defaultIdentity(profile);
   const figure = (text: string): Span => ({ text, tone: "accent" });
-  if (stats.total > 0) {
-    figures.push(["contributions", [figure(stats.total.toLocaleString("en-US")), { text: " in the last year" }]]);
-  } else figures.push(["contributions", [{ text: "none in the last year", tone: "muted" }]]);
+
+  const figures: [string, Span[]][] = [];
+  if (stats.total > 0) figures.push(["contributions", [figure(stats.total.toLocaleString("en-US")), { text: " in the last year" }]]);
+  else figures.push(["contributions", [{ text: "none in the last year", tone: "muted" }]]);
   if (stats.peak) figures.push(["peak", [figure(stats.peak.count.toLocaleString("en-US")), { text: ` on ${dayMonthYear(stats.peak.date)}` }]]);
   if (stats.busiestWeekday !== null) figures.push(["busiest", [figure(WEEKDAYS[stats.busiestWeekday]!)]]);
   if (stats.streak >= 2) figures.push(["streak", [figure(`${stats.streak} days`)]]);
 
-  const identity = who.length > 1 ? who.slice(1) : defaultIdentity(profile);
   const alt = `${[name, identity.filter(Boolean).join(" ")].filter(Boolean).join(" — ")} ${figures
     .map(([key, spans]) => `${key}: ${spans.map((span) => span.text).join("")}`)
     .join("; ")}.`;
+  const chrome: Chrome = { top: { title: "whoami", meta: `@${profile.login}` }, bottom: true };
 
+  if (compact) {
+    // Identity runs on as prose; the figures fold into two lines.
+    const prose = identity.filter(Boolean).join(" ");
+    const proseLines = prose ? wrap(prose, textCols(HALF), 3) : [];
+    const first: Span[] = [figure(stats.total.toLocaleString("en-US")), { text: " contributions" }];
+    if (stats.peak) first.push({ text: " · peak ", tone: "muted" }, figure(stats.peak.count.toLocaleString("en-US")));
+    const second: Span[] = [];
+    if (stats.busiestWeekday !== null) second.push({ text: "busiest ", tone: "muted" }, figure(WEEKDAYS[stats.busiestWeekday]!));
+    if (stats.streak >= 2) second.push({ text: second.length ? " · " : "", tone: "muted" }, figure(`${stats.streak}-day`), { text: " streak" });
+    const figureLines = second.length ? [first, second] : [first];
+    const natural = 2 + 1 + proseLines.length + figureLines.length;
+    return {
+      kind: "single",
+      pieces: [
+        {
+          name: "whoami-compact",
+          alt,
+          href,
+          bands: natural,
+          chrome,
+          draw: ({ ink, width, bands }) => {
+            let band = 1 + Math.floor((bands - natural) / 2);
+            const nameSize = Math.min(20, Math.floor((width - PAD * 2) / (columns(name) * 0.6)));
+            let body = ink.line(PAD, band * BAND + 20, [{ text: name, bold: true }], nameSize);
+            band++;
+            for (const line of prose ? wrap(prose, textCols(width), 3) : []) body += ink.line(PAD, baseline(band++), [{ text: line }]);
+            for (const spans of figureLines) body += ink.line(PAD, baseline(band++), spans);
+            return { body };
+          },
+        },
+      ],
+    };
+  }
+
+  const natural = 2 + 2 + identity.length + 1 + figures.length;
   return {
     kind: "single",
     pieces: [
@@ -221,11 +277,10 @@ export function whoamiPane(profile: Profile, stats: YearStats, who: string[], hr
         alt,
         href,
         // Borders, a two-band name, the identity lines, a gap, the figures.
-        bands: 2 + 2 + identity.length + 1 + figures.length,
-        chrome: { top: { title: "whoami", meta: `@${profile.login}` }, bottom: true },
+        bands: natural,
+        chrome,
         draw: ({ ink, width, bands }) => {
           const cols = textCols(width);
-          const natural = 2 + 2 + identity.length + 1 + figures.length;
           let band = 1 + Math.floor((bands - natural) / 2);
           const nameSize = Math.min(26, Math.floor((width - PAD * 2) / (columns(name) * 0.6)));
           let body = ink.line(PAD, band * BAND + 37, [{ text: name, bold: true }], nameSize);
@@ -259,17 +314,17 @@ function defaultIdentity(profile: Profile): string[] {
  * a time. The newest day enters on the right; after today the year replays
  * from the start, past a marker. Reduced motion holds the newest window.
  */
-export function graphPane(profile: Profile, href: string): Pane {
+export function graphPane(profile: Profile, href: string, compact: boolean): Pane {
   const days = profile.weeks.flat().filter((day): day is Day => day !== null);
   const peak = Math.max(1, ...days.map((day) => day.count));
   return {
     kind: "single",
     pieces: [
       {
-        name: "graph",
+        name: compact ? "graph-compact" : "graph",
         alt: `Contributions per day over the last year as a scrolling dot-matrix graph; the busiest day had ${peak}`,
         href,
-        bands: 7,
+        bands: compact ? 5 : 7,
         chrome: { top: { title: "activity", meta: `per day · max ${peak}` }, bottom: true },
         draw: ({ ink, width, bands, palette }) => {
           const x0 = PAD;
@@ -306,7 +361,7 @@ export function graphPane(profile: Profile, href: string): Pane {
               `<stop offset="0" stop-color="${palette.levels[1]}"/><stop offset="0.5" stop-color="${palette.levels[3]}"/><stop offset="1" stop-color="${palette.levels[4]}"/></linearGradient>` +
               `<clipPath id="window"><rect x="${x0}" y="0" width="${x1 - x0}" height="${bands * BAND}"/></clipPath>`,
             body:
-              `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${floor - y0}" fill="${palette.border}" opacity="0.55" mask="url(#leds)"/>` +
+              `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${floor - y0}" fill="${palette.border}" opacity="${UNLIT}" mask="url(#leds)"/>` +
               `<g clip-path="url(#window)"><g class="strip">` +
               `<path d="${bars}" fill="url(#heat)" mask="url(#strip-leds)"/>${marker}${labels}</g></g>`,
             css:
@@ -322,7 +377,8 @@ export function graphPane(profile: Profile, href: string): Pane {
 
 // ── posts ───────────────────────────────────────────────────────────────────
 
-export function postsPane(feed: Feed, options: { count: number; note: string[]; archive: string | null; source: string }): Pane {
+export function postsPane(feed: Feed, options: { count: number; note: string[]; archive: string | null; source: string; compact: boolean }): Pane {
+  const { compact } = options;
   const shown = feed.posts.slice(0, options.count);
   const now = new Date();
   const dates = shown.map((post) => {
@@ -333,33 +389,34 @@ export function postsPane(feed: Feed, options: { count: number; note: string[]; 
   const gutter = Math.max(0, ...dates.map(columns)) + 2;
   const host = options.source.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
   const archiveShown = options.archive?.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  // Compact drops the note and holds every title to one line.
+  const note = compact ? [] : options.note;
 
   const head: Piece = {
-    name: `posts-head-${hash(host, ...options.note)}`,
-    alt: options.note.length ? `Posts from ${host}: ${options.note.join(" ")}` : `Posts from ${host}`,
+    name: `posts-head-${hash(host, ...note)}`,
+    alt: note.length ? `Posts from ${host}: ${note.join(" ")}` : `Posts from ${host}`,
     href: options.archive ?? undefined,
-    bands: 1 + options.note.length,
+    bands: 1 + note.length,
     chrome: { top: { title: "posts", meta: host } },
-    draw: ({ ink }) => ({ body: options.note.map((line, i) => ink.line(PAD, baseline(1 + i), [{ text: `# ${line}`, tone: "muted" }])).join("") }),
+    draw: ({ ink }) => ({ body: note.map((line, i) => ink.line(PAD, baseline(1 + i), [{ text: `# ${line}`, tone: "muted" }])).join("") }),
   };
 
-  const rows: Piece[] = shown.map((post, i) => {
-    return {
-      name: `post-${hash(post.url, post.title, dates[i]!)}`,
-      alt: post.title,
-      href: post.url,
-      bands: 0,
-      chrome: {},
-      draw: ({ ink, width }) => {
-        const lines = wrap(post.title, textCols(width) - gutter, 2);
-        return {
-          body: lines
-            .map((line, row) => ink.line(PAD, baseline(row), [{ text: (row === 0 ? dates[i]! : "").padEnd(gutter), tone: "muted" }, { text: line, link: true }]))
-            .join(""),
-        };
-      },
-    };
-  });
+  const rows: Piece[] = shown.map((post, i) => ({
+    name: `post-${hash(post.url, post.title, dates[i]!, compact ? "compact" : "")}`,
+    alt: post.title,
+    href: post.url,
+    bands: compact ? 1 : 0,
+    chrome: {},
+    draw: ({ ink, width }) => {
+      const room = textCols(width) - gutter;
+      const lines = compact ? [fit(post.title, room)] : wrap(post.title, room, 2);
+      return {
+        body: lines
+          .map((line, row) => ink.line(PAD, baseline(row), [{ text: (row === 0 ? dates[i]! : "").padEnd(gutter), tone: "muted" }, { text: line, link: true }]))
+          .join(""),
+      };
+    },
+  }));
 
   const foot: Piece = {
     name: `posts-foot-${hash(options.archive ?? "")}`,
@@ -376,24 +433,60 @@ export function postsPane(feed: Feed, options: { count: number; note: string[]; 
   return { kind: "stack", pieces: [head, ...rows, foot] };
 }
 
-/** Post rows know their height only once the column width is known. */
+/** Wrapped rows know their height only once the column width is known. */
 export function measureStack(pane: Pane, width: number): Pane {
   return {
     ...pane,
-    pieces: pane.pieces.map((item) => (item.bands > 0 ? item : { ...item, bands: measure(item, width) })),
+    pieces: pane.pieces.map((item) => {
+      if (item.bands > 0) return item;
+      // Rows draw one band per line; count the lines they would draw.
+      const { body } = item.draw({ ink: new Ink(), width, bands: 2, palette: {} as Palette });
+      return { ...item, bands: Math.max(1, (body.match(/<text /g) ?? []).length) };
+    }),
   };
 }
 
-function measure(item: Piece, width: number): number {
-  // Rows draw one band per line; count the lines they would draw.
-  const ink = new Ink();
-  const { body } = item.draw({ ink, width, bands: 2, palette: {} as Palette });
-  return Math.max(1, (body.match(/<text /g) ?? []).length);
+/**
+ * A stack drawn as one image, for a row that already has a list on its other
+ * side: two lists cannot flow beside each other on GitHub. Its lines stop being
+ * separate links; the whole pane links where its heading did.
+ */
+export function flatten(pane: Pane): Pane {
+  const first = pane.pieces[0]!;
+  const natural = pane.pieces.reduce((n, item) => n + item.bands, 0);
+  return {
+    kind: "single",
+    pieces: [
+      {
+        name: `${first.name}-flat`,
+        alt: pane.pieces.map((item) => item.alt).join(". "),
+        href: first.href ?? pane.pieces.find((item) => item.href)?.href,
+        bands: natural,
+        chrome: { top: first.chrome.top, bottom: true },
+        draw: (context) => {
+          let defs = "";
+          let body = "";
+          let css = "";
+          let y = 0;
+          pane.pieces.forEach((item, k) => {
+            const drawn = item.draw({ ...context, bands: item.bands });
+            // Each piece named its masks for an SVG of its own; keep them apart.
+            const scope = (markup: string) => markup.replace(/id="([^"]+)"/g, `id="s${k}-$1"`).replace(/url\(#([^)]+)\)/g, `url(#s${k}-$1)`);
+            defs += scope(drawn.defs ?? "");
+            body += `<g transform="translate(0 ${y})">${scope(drawn.body)}</g>`;
+            css += drawn.css ?? "";
+            y += item.bands * BAND;
+          });
+          return { defs, body, css };
+        },
+      },
+    ],
+  };
 }
 
 // ── top ─────────────────────────────────────────────────────────────────────
 
-export function topPane(profile: Profile, count: number): Pane | null {
+export function topPane(profile: Profile, count: number, compact: boolean): Pane | null {
   const repos = profile.repos.slice(0, count);
   if (repos.length === 0) return null;
   const most = repos[0]!.commits;
@@ -405,13 +498,15 @@ export function topPane(profile: Profile, count: number): Pane | null {
     return { name: cols - lang - commits - bar - 3, lang, commits, bar };
   };
 
+  // Compact drops the column headings.
   const head: Piece = {
-    name: "top-head",
+    name: compact ? "top-head-compact" : "top-head",
     alt: `Public repositories ${profile.login} committed to most in the last year`,
     href: `https://github.com/${profile.login}?tab=repositories`,
-    bands: 2,
+    bands: compact ? 1 : 2,
     chrome: { top: { title: "top", meta: "public · last year" } },
     draw: ({ ink, width }) => {
+      if (compact) return { body: "" };
       const c = layout(width);
       return {
         body: ink.line(PAD, baseline(1), [
@@ -435,20 +530,18 @@ export function topPane(profile: Profile, count: number): Pane | null {
       const y = baseline(0);
       const barX = PAD + (c.name + 1 + c.lang + 1) * TEXT.advance;
       const dots = c.bar * 2;
-      const lit = Math.max(1, Math.round((repo.commits / most) * dots));
+      const bar = ledBar("leds", barX, y - 9, dots, Math.max(1, Math.round((repo.commits / most) * dots)), palette.accent, palette);
+      const name = fit(repo.name, c.name);
       return {
-        defs: dotMask("leds", barX, y - 9, dots * DOT, DOT * 2, y - 9 + DOT * 2),
+        defs: bar.defs,
         body:
           ink.line(PAD, y, [
-            { text: fit(repo.name, c.name), link: true },
-            { text: "".padEnd(c.name + 1 - columns(fit(repo.name, c.name))) },
+            { text: name, link: true },
+            { text: "".padEnd(c.name + 1 - columns(name)) },
             { text: fit(repo.language ?? "–", c.lang).padEnd(c.lang + 1), tone: "muted" },
             { text: "".padEnd(c.bar + 1) },
             { text: String(repo.commits).padStart(c.commits), tone: "accent" },
-          ]) +
-          `<rect x="${barX}" y="${y - 9}" width="${dots * DOT}" height="${DOT * 2}" fill="${palette.border}" opacity="0.55" mask="url(#leds)"/>` +
-          `<rect class="grow" x="${barX}" y="${y - 9}" width="${+(lit * DOT).toFixed(2)}" height="${DOT * 2}" fill="${palette.accent}" mask="url(#leds)"/>`,
-        css: growCss(0),
+          ]) + bar.body,
       };
     },
   }));
@@ -457,17 +550,9 @@ export function topPane(profile: Profile, count: number): Pane | null {
   return { kind: "stack", pieces: [head, ...rows, foot] };
 }
 
-/** Bars fill once when the image loads, then hold. */
-function growCss(delay: number): string {
-  return (
-    `.grow{transform-box:fill-box;transform-origin:left;animation:grow 1.2s cubic-bezier(.2,.8,.2,1) ${delay}s both}` +
-    `@keyframes grow{from{transform:scaleX(0)}}@media (prefers-reduced-motion:reduce){.grow{animation:none}}`
-  );
-}
-
 // ── langs ───────────────────────────────────────────────────────────────────
 
-export function langsPane(profile: Profile, href: string): Pane | null {
+export function langsPane(profile: Profile, href: string, compact: boolean): Pane | null {
   const byLanguage: Record<string, number> = {};
   for (const repo of profile.repos) if (repo.language) byLanguage[repo.language] = (byLanguage[repo.language] ?? 0) + repo.commits;
   const sorted = Object.entries(byLanguage).sort((a, b) => b[1] - a[1]);
@@ -477,17 +562,81 @@ export function langsPane(profile: Profile, href: string): Pane | null {
   const rest = sorted.slice(5).reduce((n, [, commits]) => n + commits, 0);
   if (rest > 0) shown.push(["other", rest]);
   const share = (commits: number) => `${Math.round((commits / sum) * 100)}%`;
+  const alt = `Languages of ${profile.login}'s public commits in the last year: ${shown.map(([language, commits]) => `${language} ${share(commits)}`).join(", ")}`;
+  const chrome: Chrome = { top: { title: "langs", meta: "by public commits" }, bottom: true };
+  // Brightest ink for the biggest share, down the ramp from there.
+  const ink = (palette: Palette, i: number) => palette.levels[Math.max(0, 4 - i)]!;
+
+  if (compact) {
+    // One bar split by share, GitHub-style, with a flowing legend under it.
+    const legendLines = (cols: number) => {
+      const lines: [string, number, number][][] = [[]];
+      let used = 0;
+      shown.forEach(([language, commits], i) => {
+        const width = 2 + columns(language) + 1 + share(commits).length + 2;
+        if (used + width - 2 > cols && used > 0) {
+          lines.push([]);
+          used = 0;
+        }
+        lines.at(-1)!.push([language, commits, i]);
+        used += width;
+      });
+      return lines;
+    };
+    const natural = 2 + 1 + legendLines(textCols(HALF)).length;
+    return {
+      kind: "single",
+      pieces: [
+        {
+          name: "langs-compact",
+          alt,
+          href,
+          bands: natural,
+          chrome,
+          draw: ({ ink: pen, width, bands, palette }) => {
+            const cols = textCols(width);
+            const lines = legendLines(cols);
+            let band = 1 + Math.floor((bands - (2 + 1 + lines.length)) / 2);
+            const dots = Math.floor((width - PAD * 2) / DOT);
+            const y = baseline(band) - 9;
+            // Cumulative rounding, so the segments always add up to the whole bar.
+            let counted = 0;
+            let segments = "";
+            shown.forEach(([, commits], i) => {
+              const from = Math.round((counted / sum) * dots);
+              counted += commits;
+              const to = Math.round((counted / sum) * dots);
+              if (to > from) segments += `<rect x="${+(PAD + from * DOT).toFixed(2)}" y="${y}" width="${+((to - from) * DOT).toFixed(2)}" height="${DOT * 2}" fill="${ink(palette, i)}" mask="url(#leds)"/>`;
+            });
+            let body = segments;
+            band++;
+            for (const line of lines) {
+              let x = PAD;
+              const by = baseline(band);
+              for (const [language, commits, i] of line) {
+                body += `<rect x="${x}" y="${by - 9}" width="9" height="9" rx="2" fill="${ink(palette, i)}"/>`;
+                body += pen.line(x + 2 * TEXT.advance, by, [{ text: language }, { text: ` ${share(commits)}`, tone: "muted" }]);
+                x += (2 + columns(language) + 1 + share(commits).length + 2) * TEXT.advance;
+              }
+              band++;
+            }
+            return { defs: dotMask("leds", PAD, y, dots * DOT, DOT * 2, y), body };
+          },
+        },
+      ],
+    };
+  }
 
   return {
     kind: "single",
     pieces: [
       {
         name: "langs",
-        alt: `Languages of ${profile.login}'s public commits in the last year: ${shown.map(([language, commits]) => `${language} ${share(commits)}`).join(", ")}`,
+        alt,
         href,
         bands: 2 + shown.length,
-        chrome: { top: { title: "langs", meta: "by public commits" }, bottom: true },
-        draw: ({ ink, width, bands, palette }) => {
+        chrome,
+        draw: ({ ink: pen, width, bands, palette }) => {
           const cols = textCols(width);
           const nameCols = Math.min(14, Math.max(...shown.map(([language]) => columns(language))) + 2);
           const barX = PAD + nameCols * TEXT.advance;
@@ -495,20 +644,14 @@ export function langsPane(profile: Profile, href: string): Pane | null {
           let band = 1 + Math.floor((bands - 2 - shown.length) / 2);
           let defs = "";
           let body = "";
-          let css = "";
           shown.forEach(([language, commits], i) => {
             const y = baseline(band);
-            const lit = Math.max(1, Math.round((commits / shown[0]![1]) * dots));
-            defs += dotMask(`leds${i}`, barX, y - 9, dots * DOT, DOT * 2, y - 9);
-            body +=
-              ink.line(PAD, y, [{ text: fit(language, nameCols - 2) }]) +
-              `<rect x="${barX}" y="${y - 9}" width="${dots * DOT}" height="${DOT * 2}" fill="${palette.border}" opacity="0.55" mask="url(#leds${i})"/>` +
-              `<rect class="grow g${i}" x="${barX}" y="${y - 9}" width="${+(lit * DOT).toFixed(2)}" height="${DOT * 2}" fill="${palette.levels[Math.max(1, 4 - i)]}" mask="url(#leds${i})"/>` +
-              ink.lineEnd(width - PAD, y, [{ text: share(commits), tone: "muted" }]);
-            css += `.g${i}{animation-delay:${(i * 0.08).toFixed(2)}s}`;
+            const bar = ledBar(`leds${i}`, barX, y - 9, dots, Math.max(1, Math.round((commits / shown[0]![1]) * dots)), ink(palette, i), palette);
+            defs += bar.defs;
+            body += pen.line(PAD, y, [{ text: fit(language, nameCols - 2) }]) + bar.body + pen.lineEnd(width - PAD, y, [{ text: share(commits), tone: "muted" }]);
             band++;
           });
-          return { defs, body, css: growCss(0) + css };
+          return { defs, body };
         },
       },
     ],
@@ -519,37 +662,43 @@ export function langsPane(profile: Profile, href: string): Pane | null {
 
 /**
  * tmux's status line: the session, one window per link, and the date the
- * dashboard was drawn, filling out to the grid's full width.
+ * dashboard was drawn, filling out to the grid's full width. Each window is
+ * its own image so it can be its own link.
  */
 export function statusBar(session: string, links: Link[], drawn: string, fullWidth: number, credit: string): Image[] {
-  const chip = (name: string, text: Span[], alt: string, href: string | undefined, inset: { left?: number; right?: number; width?: number }): Image => {
+  const chip = (name: string, text: Span[], alt: string, href: string | undefined, fixedWidth?: number, inset = { left: 0, right: 0 }): Image => {
     const cols = text.reduce((n, span) => n + columns(span.text), 0);
-    const left = inset.left ?? 0;
-    const width = inset.width ?? Math.ceil(left + (cols + 2) * TEXT.advance + (inset.right ?? 0));
+    const width = fixedWidth ?? Math.ceil(inset.left + (cols + 2) * TEXT.advance + inset.right);
     return {
       name,
       width,
       alt,
       href,
-      render: (palette) => {
-        const ink = new Ink();
-        const body =
-          `<rect x="${left}" y="3" width="${width - left - (inset.right ?? 0)}" height="${BAND - 6}" fill="${palette.accent}"/>` +
-          (inset.width ? ink.lineEnd(width - (inset.right ?? 0) - TEXT.advance, TEXT.baseline, text) : ink.line(left + TEXT.advance, TEXT.baseline, text));
-        return piece({ width, bands: 1, palette, chrome: { sides: false }, title: alt, draw: () => ({ body }) });
-      },
+      render: (palette) =>
+        piece({
+          width,
+          bands: 1,
+          palette,
+          chrome: { sides: false },
+          title: alt,
+          draw: (ink) => ({
+            body:
+              `<rect x="${inset.left}" y="3" width="${width - inset.left - inset.right}" height="${BAND - 6}" fill="${palette.accent}"/>` +
+              (fixedWidth ? ink.lineEnd(width - inset.right - TEXT.advance, TEXT.baseline, text) : ink.line(inset.left + TEXT.advance, TEXT.baseline, text)),
+          }),
+        }),
     };
   };
 
   const images: Image[] = [
-    chip(`bar-session-${hash(session)}`, [{ text: `[${session}]`, tone: "onAccent", bold: true }], `tmux session ${session}`, undefined, { left: INSET }),
+    chip(`bar-session-${hash(session)}`, [{ text: `[${session}]`, tone: "onAccent", bold: true }], `tmux session ${session}`, undefined, undefined, { left: INSET, right: 0 }),
     ...links.map((link, i) =>
-      chip(`bar-${hash(link.label, link.url)}`, [{ text: `${i}:${link.label}${i === 0 ? "*" : ""}`, tone: "onAccent" }], `${link.label}: ${link.url.replace(/^mailto:/, "").replace(/^https?:\/\//, "")}`, link.url, {}),
+      chip(`bar-${hash(link.label, link.url)}`, [{ text: `${i}:${link.label}${i === 0 ? "*" : ""}`, tone: "onAccent" }], `${link.label}: ${link.url.replace(/^mailto:/, "").replace(/^https?:\/\//, "")}`, link.url),
     ),
   ];
   const used = images.reduce((n, image) => n + image.width, 0);
-  const clockText: Span[] = [{ text: `drawn ${drawn}`, tone: "onAccent" }];
-  const clockMin = Math.ceil((columns(clockText[0]!.text) + 2) * TEXT.advance + INSET);
-  images.push(chip("bar-clock", clockText, `Drawn by afterglow on ${drawn}`, credit, { right: INSET, width: Math.max(clockMin, fullWidth - used) }));
+  const clock: Span[] = [{ text: `drawn ${drawn}`, tone: "onAccent" }];
+  const least = Math.ceil((columns(clock[0]!.text) + 2) * TEXT.advance + INSET);
+  images.push(chip("bar-clock", clock, `Drawn by afterglow on ${drawn}`, credit, Math.max(least, fullWidth - used), { left: 0, right: INSET }));
   return images;
 }
