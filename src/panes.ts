@@ -683,9 +683,32 @@ export function statusBar(session: string, links: Link[], drawn: string, fullWid
   });
   const rect = (x: number, width: number, fill: string) => `<rect x="${+x.toFixed(2)}" y="${top}" width="${+width.toFixed(2)}" height="${bottom - top}" fill="${fill}"/>`;
 
+  const label = `drawn ${drawn}`;
+  const clock = Math.ceil(pad + columns(label) * TEXT.advance + pad + INSET);
   const sessionWidth = Math.ceil(INSET + pad + columns(session) * TEXT.advance + pad + arrow);
+  let linkWidths = links.map((link, i) => Math.ceil(pad + columns(link.label) * TEXT.advance + pad + (i === links.length - 1 ? 0 : 6)));
+
+  // The base fills the line out to the date. No segment grows past a phone's
+  // README column, or GitHub would shrink that one segment there: the spare
+  // width goes to the date segment up to that limit, then evenly to the links.
+  const phone = 300;
+  const clockLeast = clock + arrow + pad * 2;
+  let spare = fullWidth - sessionWidth - linkWidths.reduce((n, w) => n + w, 0) - clockLeast;
+  let clockWidth = clockLeast + Math.max(0, Math.min(spare, phone - clockLeast));
+  spare -= clockWidth - clockLeast;
+  if (spare > 0 && links.length > 0) {
+    const share = Math.floor(spare / links.length);
+    linkWidths = linkWidths.map((w) => Math.min(phone, w + share));
+  }
+  const leftover = fullWidth - sessionWidth - linkWidths.reduce((n, w) => n + w, 0) - clockWidth;
+  clockWidth += Math.max(0, Math.min(leftover, phone - clockWidth));
+  // Rounding leaves a pixel or two; the last link takes them if it has room.
+  const rest = fullWidth - sessionWidth - linkWidths.reduce((n, w) => n + w, 0) - clockWidth;
+  if (rest > 0 && links.length > 0 && linkWidths.at(-1)! + rest <= phone) linkWidths[linkWidths.length - 1]! += rest;
+
+  const homeShown = home?.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
   const images: Image[] = [
-    segment(`bar-session-${hash(session)}`, sessionWidth, `Session ${session}`, home, (ink, palette) =>
+    segment(`bar-session-${hash(session)}`, sessionWidth, homeShown ? `${session}. Opens ${homeShown}.` : session, home, (ink, palette) =>
       rect(sessionWidth - arrow, arrow, palette.border) +
       rect(INSET, sessionWidth - arrow - INSET, palette.accent) +
       `<path d="M${sessionWidth - arrow} ${top}L${sessionWidth} ${middle}L${sessionWidth - arrow} ${bottom}Z" fill="${palette.accent}"/>` +
@@ -693,28 +716,22 @@ export function statusBar(session: string, links: Link[], drawn: string, fullWid
     ),
     ...links.map((link, i) => {
       const last = i === links.length - 1;
-      const width = Math.ceil(pad + columns(link.label) * TEXT.advance + pad + (last ? 0 : 6));
+      const width = linkWidths[i]!;
+      const room = width - (last ? 0 : 6);
       const shown = link.url.replace(/^mailto:/, "").replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
       return segment(`bar-${hash(link.label, link.url)}`, width, `${link.label}: ${shown}`, link.url, (ink, palette) =>
         rect(0, width, palette.border) +
-        ink.line(pad, TEXT.baseline, [{ text: link.label }]) +
+        // Centred, so a segment widened to fill the line reads as a tab, not a gap.
+        ink.line((room - columns(link.label) * TEXT.advance) / 2, TEXT.baseline, [{ text: link.label }]) +
         (last ? "" : `<path d="M${width - 6} ${top + 3}L${width - 1} ${middle}L${width - 6} ${bottom - 3}" fill="none" stroke="${palette.muted}" stroke-width="1.2"/>`),
       );
     }),
-  ];
-
-  // The base runs out to the right edge, where the date sits in its own accent segment.
-  const label = `drawn ${drawn}`;
-  const clock = Math.ceil(pad + columns(label) * TEXT.advance + pad + INSET);
-  const used = images.reduce((n, image) => n + image.width, 0);
-  const width = Math.max(clock + arrow + pad * 2, fullWidth - used);
-  images.push(
-    segment("bar-clock", width, `Drawn by afterglow on ${drawn}`, credit, (ink, palette) =>
-      rect(0, width - clock, palette.border) +
-      `<path d="M${width - clock} ${top}L${width - clock - arrow} ${middle}L${width - clock} ${bottom}Z" fill="${palette.accent}"/>` +
-      rect(width - clock, clock - INSET, palette.accent) +
-      ink.lineEnd(width - INSET - pad, TEXT.baseline, [{ text: label, tone: "onAccent" }]),
+    segment("bar-clock", clockWidth, `Drawn by afterglow on ${drawn}`, credit, (ink, palette) =>
+      rect(0, clockWidth - clock, palette.border) +
+      `<path d="M${clockWidth - clock} ${top}L${clockWidth - clock - arrow} ${middle}L${clockWidth - clock} ${bottom}Z" fill="${palette.accent}"/>` +
+      rect(clockWidth - clock, clock - INSET, palette.accent) +
+      ink.lineEnd(clockWidth - INSET - pad, TEXT.baseline, [{ text: label, tone: "onAccent" }]),
     ),
-  );
+  ];
   return images;
 }
