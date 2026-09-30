@@ -1,5 +1,5 @@
 name: afterglow
-description: Your GitHub year as a spinning ASCII torus, with whoami, your latest posts and your links, drawn as one terminal session for a profile README.
+description: Your GitHub profile as a phosphor terminal dashboard. A spinning ASCII torus of your year, live panes, your posts and links, all animated SVG.
 author: Koray Güler
 branding:
   icon: terminal
@@ -7,32 +7,41 @@ branding:
 
 inputs:
   user:
-    description: GitHub login whose contribution calendar is drawn.
+    description: GitHub login to draw.
     default: ${{ github.repository_owner }}
   token:
-    description: Token for the GraphQL contribution calendar. The workflow's own token is enough.
+    description: Token for the GraphQL calls. The workflow's own token is enough; it sees public data only.
     default: ${{ github.token }}
-  prompt:
-    description: Shell prompt printed before every command, e.g. `koray@istanbul ~ %`. Defaults to `<login> ~ %`.
-    default: ""
+  theme:
+    description: phosphor (green), amber, ice (blue-white) or github (GitHub's own greens).
+    default: phosphor
+  panes:
+    description: Which panes, in reading order, from year, whoami, activity, posts, langs, top. Panes without data (posts without a feed) are skipped.
+    default: year whoami activity posts langs top
   whoami:
-    description: Lines printed by `whoami`. The first is set large as your name; blank lines are kept. Defaults to your GitHub name and bio.
+    description: Lines for the whoami pane. The first is your name, set large; blank lines are kept. Defaults to your GitHub name, bio, company and location.
+    default: ""
+  session:
+    description: tmux session name at the left of the status bar. Defaults to your login.
     default: ""
   feed:
-    description: RSS or Atom feed URL. When set, the newest posts are listed, each line linking to its post.
+    description: RSS or Atom feed URL for the posts pane; each post is its own link.
     default: ""
   feed_note:
-    description: Lines printed as `#` comments above the post list.
+    description: Lines printed as `#` comments at the top of the posts pane.
     default: ""
   posts:
     description: How many posts to list, 1 to 20.
     default: "5"
   posts_url:
-    description: Where the closing "all of them at" line points. Defaults to the site the feed names.
+    description: Where the "all of them at" line points. Defaults to the site the feed names.
     default: ""
   links:
-    description: One link per line as `label url`, printed by `cat links`. The first one is where `whoami` links.
+    description: One `label url` per line, shown as tmux windows in the status bar. Defaults to the website and social accounts on your GitHub profile.
     default: ""
+  repos:
+    description: How many repositories the top pane lists, 1 to 20.
+    default: "5"
   out:
     description: Directory the SVGs are written to. Publish it to the branch `base_url` points at.
     default: afterglow

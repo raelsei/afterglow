@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { columns, wrap } from "./svg";
+import { columns, fit, wrap } from "./text";
 
 test("a title that needs two lines splits evenly instead of stranding a word", () => {
   expect(wrap("Your LLM can't hallucinate a number it was never given", 48, 2)).toEqual([
@@ -29,4 +29,9 @@ test("wide characters take two columns", () => {
   expect(columns("abc")).toBe(3);
   expect(columns("日本")).toBe(4);
   expect(columns("İstanbul")).toBe(8);
+});
+
+test("fit cuts to the width with an ellipsis and leaves short text alone", () => {
+  expect(fit("pocketbase-ts-starter", 12)).toBe("pocketbase-…");
+  expect(fit("keel", 12)).toBe("keel");
 });

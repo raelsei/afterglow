@@ -1,53 +1,67 @@
-<div align="center">
-
-<a href="https://github.com/raelsei"><picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/raelsei/raelsei/output/year-dark.svg">
-  <img src="https://raw.githubusercontent.com/raelsei/raelsei/output/year-light.svg" width="440" alt="A spinning ASCII torus drawn from a year of GitHub contributions">
-</picture></a>
-
-</div>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/preview-dark.png">
+  <img src="docs/preview-light.png" alt="afterglow on github.com/raelsei: a spinning ASCII torus of the year, whoami, a scrolling activity graph, posts, languages and top repositories in boxed panes, over a tmux status bar">
+</picture>
 
 # afterglow
 
-Your last year of GitHub contributions, wrapped around a torus and spun in
-ASCII the way [donut.c](https://www.a1k0n.net/2011/07/20/donut-math.html) spins
-its donut. Beside it, `whoami`, your newest posts and your links, all printed as
-one terminal session straight onto your profile page. It redraws itself every
-day from a GitHub Action.
+Your GitHub profile as a phosphor terminal dashboard: the year spinning as an
+ASCII torus, live panes in the manner of `btop`, your newest posts, and your
+links as tmux windows. Every pane is an animated SVG redrawn daily by a GitHub
+Action, and every figure in it is fetched, never typed.
 
-The torus above is live: it is [github.com/raelsei](https://github.com/raelsei)'s
-year, redrawn every day.
+Live on [github.com/raelsei](https://github.com/raelsei).
+
+## Panes
+
+| Pane       | What it shows                                                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------------------------- |
+| `year`     | Your contribution calendar wrapped around a torus and spun like [donut.c](https://www.a1k0n.net/2011/07/20/donut-math.html). |
+| `whoami`   | Your name, a few lines about you, and the year in four figures: total, busiest day, busiest weekday, streak.    |
+| `activity` | Contributions per day as a dot-matrix graph that scrolls a day at a time, newest on the right.                 |
+| `posts`    | The newest posts from an RSS or Atom feed. Every post is its own link.                                          |
+| `langs`    | Languages of the public repositories you committed to this year, weighted by your commits.                     |
+| `top`      | Those repositories, most commits first. Every row is its own link.                                             |
+
+Below them, a tmux status line: your session name, one window per link, and
+the day it was drawn.
+
+Panes pair up into rows of two equal-height columns, so no row leaves half the
+page empty. On a narrow screen the columns fall into one, in reading order.
 
 ## How a year becomes a donut
 
 The contribution calendar is a grid, 53 weeks by 7 days, and a torus is a grid
 with both pairs of edges glued together. Weeks go around the ring and weekdays
 around the tube, so the year closes on itself: last week sits next to the one a
-year ago.
+year ago. Each day lifts the surface by the square root of its count and takes
+one of GitHub's five contribution levels as its ink. Every frame is ray-marched
+and shaded into donut.c's ramp, `.,-~:;=!*#$@`, and a surface turned away from
+the light prints nothing, as in the original.
 
-Each day lifts the surface by the square root of its count and takes one of
-GitHub's five contribution levels as its ink. Every frame is ray-marched and
-shaded into donut.c's luminance ramp, `.,-~:;=!*#$@`, and a surface turned away
-from the light prints nothing, as in the original.
+## Why it is built the way it is
 
-There is no JavaScript anywhere. GitHub serves README images through a proxy,
-and an SVG loaded as an image may not run scripts or fetch anything, so:
+GitHub serves README images through a proxy, strips every script and style
+from the Markdown, and an SVG loaded as an image may not fetch anything. So:
 
-- 120 frames are drawn once and one CSS keyframe shows each in turn, eight a
-  second. A frame lingers for two more slots at falling opacity, the way a
-  phosphor screen fades, which also smooths the motion.
-- Every file carries its own copy of [Google Sans Code](https://github.com/googlefonts/googlesans-code),
+- The torus is 120 frames drawn once; one CSS keyframe shows each in turn,
+  eight a second, and a frame lingers two more slots at falling opacity, the
+  way a phosphor screen fades.
+- Every SVG carries its own copy of [Google Sans Code](https://github.com/googlefonts/googlesans-code),
   cut down to the characters it draws.
-- Each image ships a dark and a light file, and `<picture>` follows the
-  viewer's GitHub theme. Under `prefers-reduced-motion` the torus holds the
-  pose that shows the most of the year.
-
-Text lines are separate images so that every post and link can be its own
-link. Their ground is transparent, so GitHub's page is the screen.
+- The layout is floats. A pane with `align="left"` gets GitHub's 20px padding,
+  which is the gutter; `<br clear="all">` ends a row. Everything sits on a 28px
+  band, the smallest pitch a phone still shows without gaps once GitHub scales
+  a 400px pane into its column.
+- Lists are one image per line so each line can be a link, and the box around
+  them is drawn a slice at a time.
+- Each image ships dark and light files, and `<picture>` follows the viewer's
+  GitHub theme. Under `prefers-reduced-motion` nothing moves: the torus holds
+  its fullest pose and the graph its newest window.
 
 ## Use it
 
-1. Put the markers where the session should go in your profile README
+1. Put the markers where the dashboard should go in your profile README
    (`<you>/<you>/README.md`):
 
    ```md
@@ -81,18 +95,10 @@ link. Their ground is transparent, so GitHub's page is the screen.
        steps:
          - uses: actions/checkout@v5
 
-         - uses: raelsei/afterglow@v1
+         - uses: raelsei/afterglow@v2
            with:
-             prompt: you@home ~ %
-             whoami: |
-               Your Name
-               what you do, where.
-
-               one line you stand by.
+             theme: phosphor
              feed: https://your.site/rss.xml
-             links: |
-               web https://your.site
-               mail mailto:you@your.site
 
          # Images first, so the README never points at files that are not there yet.
          - uses: peaceiris/actions-gh-pages@v4
@@ -103,63 +109,72 @@ link. Their ground is transparent, so GitHub's page is the screen.
              force_orphan: true
              commit_message: "afterglow: redraw"
 
-         - name: Commit the README when the post list changed
+         - name: Commit the README when it changed
            run: |
              git diff --quiet README.md && exit 0
              git config user.name "github-actions[bot]"
              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
              git add README.md
-             git commit -m "afterglow: refresh the post list"
+             git commit -m "afterglow: redraw"
+             git pull --rebase
              git push
    ```
 
 3. Run it once from the Actions tab. After that it redraws daily, and a push
    made with the workflow's own token does not trigger it again.
 
-The README only changes when your post list, links or `whoami` do. The torus
-and the daily figures keep their file names and are simply replaced on the
-`output` branch, so your history does not fill up with redraws.
+With no inputs at all it draws everything it can find on your profile: name,
+bio, company, location, website and social accounts. A feed adds the posts
+pane.
+
+The images keep their file names and are replaced on the `output` branch,
+which is force-pushed, so it never grows a history. The README changes on most
+days anyway: each image's alt text says what the image shows, today's figures
+included, because an `<img>` gives a screen reader its alt and nothing else.
 
 ## Inputs
 
-| Input       | Default                    | What it does                                                                                 |
-| ----------- | -------------------------- | -------------------------------------------------------------------------------------------- |
-| `user`      | repository owner           | Whose contribution calendar is drawn.                                                         |
-| `token`     | `github.token`             | Reads the calendar over GraphQL.                                                              |
-| `prompt`    | `<login> ~ %`              | Printed before every command.                                                                 |
-| `whoami`    | GitHub name and bio        | Lines printed by `whoami`. The first is set large; blank lines are kept.                      |
-| `feed`      | none                       | RSS or Atom feed. Without it there is no post list.                                           |
-| `feed_note` | none                       | Lines printed as `#` comments above the post list.                                            |
-| `posts`     | `5`                        | How many posts to list, 1 to 20.                                                              |
-| `posts_url` | the feed's site            | Where the closing "all of them at" line points.                                               |
-| `links`     | none                       | `label url` per line, printed by `cat links`. `whoami` links to the first.                    |
-| `out`       | `afterglow`                | Where the SVGs are written.                                                                   |
-| `readme`    | `README.md`                | Updated between the markers. Empty leaves it alone; the block is always in `<out>/README.block.md`. |
-| `base_url`  | `raw.githubusercontent.com/<repo>/output` | Where the README loads the images from.                                        |
+| Input       | Default                                  | What it does                                                                       |
+| ----------- | ---------------------------------------- | ---------------------------------------------------------------------------------- |
+| `user`      | repository owner                         | Whose profile is drawn.                                                            |
+| `token`     | `github.token`                           | Reads the profile over GraphQL. Private repositories never appear.                 |
+| `theme`     | `phosphor`                               | `phosphor` (P1 green), `amber` (P3), `ice` (P4 blue-white) or `github`.            |
+| `panes`     | `year whoami activity posts langs top`   | Which panes, in reading order.                                                     |
+| `whoami`    | name, bio, company, location             | Lines for `whoami`. The first is your name; blank lines are kept.                  |
+| `session`   | your login                               | The tmux session name in the status bar.                                           |
+| `feed`      | none                                     | RSS or Atom feed. Without it there is no posts pane.                               |
+| `feed_note` | none                                     | `#` comment lines at the top of the posts pane.                                    |
+| `posts`     | `5`                                      | How many posts, 1 to 20.                                                           |
+| `posts_url` | the feed's site                          | Where "all of them at" points.                                                     |
+| `links`     | website and social accounts              | `label url` per line, one tmux window each.                                        |
+| `repos`     | `5`                                      | How many repositories `top` lists.                                                 |
+| `out`       | `afterglow`                              | Where the SVGs are written.                                                        |
+| `readme`    | `README.md`                              | Updated between the markers. Empty leaves it alone; the block is always in `<out>/README.block.md`. |
+| `base_url`  | `raw.githubusercontent.com/<repo>/output` | Where the README loads the images from.                                           |
 
-Every figure it prints comes from the calendar it just fetched: total
-contributions, the busiest day, the busiest weekday and the current streak. A
-streak shorter than two days is left out rather than printed as a zero, and a
-quiet today does not end it yet.
+A streak shorter than two days is left out rather than printed as a zero, and a
+quiet today does not end it yet. `langs` and `top` count only public
+repositories, whatever the token could see.
 
 ## Run it locally
 
 ```sh
 bun install
-GITHUB_TOKEN=$(gh auth token) bun src/main.ts --user raelsei --feed https://koray.dev/rss.xml --out /tmp/afterglow
+GITHUB_TOKEN=$(gh auth token) bun src/main.ts --user raelsei --theme amber --out /tmp/afterglow
 ```
 
 Every input is also a flag (`--feed-note`, `--posts-url`, …) or an
 `INPUT_<NAME>` variable. `bun test` covers the feed parser, line wrapping, the
-streak rules and the README markers; `bun run build` rebuilds `dist/index.mjs`,
-which is what the action runs and is committed on purpose.
+streak rules, the row layout and the README markers; `bun run build` rebuilds
+`dist/index.mjs`, which is what the action runs and is committed on purpose.
 
 ## Credits
 
 The luminance ramp and the idea are Andy Sloane's
-[donut.c](https://www.a1k0n.net/2011/07/20/donut-math.html). Google Sans Code is
-© The Google Sans Code Project Authors, under the
-[SIL Open Font License](fonts/OFL.txt). The Phosphor palette is
+[donut.c](https://www.a1k0n.net/2011/07/20/donut-math.html); the panes owe
+their manners to [btop](https://github.com/aristocratos/btop) and tmux. Google
+Sans Code is © The Google Sans Code Project Authors, under the
+[SIL Open Font License](fonts/OFL.txt). The phosphor palette is
 [koray.dev](https://koray.dev)'s.
 
 ## Licence

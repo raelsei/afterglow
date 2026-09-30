@@ -12,7 +12,7 @@ function week(sunday: string, counts: (number | null)[]): (Day | null)[] {
 
 function profile(weeks: (Day | null)[][]): Profile {
   const total = weeks.flat().reduce((sum, day) => sum + (day?.count ?? 0), 0);
-  return { login: "x", name: null, bio: null, total, weeks };
+  return { login: "x", name: null, bio: null, company: null, location: null, links: [], total, weeks, repos: [] };
 }
 
 test("a quiet today does not break the streak, a quiet yesterday does", () => {
