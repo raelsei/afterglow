@@ -1,6 +1,6 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/preview-dark.png">
-  <img src="docs/preview-light.png" alt="afterglow on github.com/raelsei: a spinning ASCII torus of the year, whoami, a scrolling activity graph, posts, languages and top repositories in boxed panes, over a powerline status line">
+  <img src="docs/preview-light.png" alt="afterglow drawing raelsei's profile with every pane that needs no history: the year as a spinning ASCII trefoil knot, whoami, neofetch, the activity graph, posts, the contribution grid, contributions by kind, the commit clock, pinned repositories, pull requests, the commit log, releases, languages and top repositories, over a powerline status line">
 </picture>
 
 # afterglow
@@ -10,7 +10,8 @@ ASCII shape, live panes in the manner of `btop`, your newest posts, and your
 links along a powerline status line. Every pane is an animated SVG, redrawn
 daily by a GitHub Action from data it fetches.
 
-Live on [github.com/raelsei](https://github.com/raelsei).
+Above, every pane drawn for one profile (`trends` fills in over days). Live, in
+a shorter layout, on [github.com/raelsei](https://github.com/raelsei).
 
 ## Quick start
 
@@ -115,6 +116,11 @@ inked by its contribution level, shaded like
 | `moon`             | a moon lit from the side: weeks around the equator, days from pole to pole, and a crater a day, deeper the busier. |
 | `knot`             | a trefoil knot: weeks along the knot, days around its tube.                   |
 | `flag`             | a banner in the wind: weeks from left to right, Sunday on top, as GitHub draws it. |
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/shapes-dark.png">
+  <img src="docs/shapes-light.png" alt="The same year drawn as each of the eight shapes: torus, planet, mobius, coil, twist, moon, knot and flag">
+</picture>
 
 ## Layout
 
