@@ -23,7 +23,8 @@ interface Calendar {
   weeks: number;
   /** Square root of each day's count over the busiest day's, so 0 to 1. */
   height: Float64Array;
-  level: Uint8Array;
+  /** -1 where the slot holds no day of the period. */
+  level: Int8Array;
 }
 
 /** A surface drawn from the calendar, in object space with y up. */
@@ -43,29 +44,43 @@ interface Solid {
   light?: readonly [number, number, number];
 }
 
-/** Every shape, with what its alt text says: `${title} made of <login>'s contributions over <period>: ${how}.` */
+/** Every shape, with what its alt text says: `${title} made of <login>'s contributions over <period>: ${how}.`
+ *  A closed shape glues its last week to its first. */
 export const SHAPES = {
-  torus: { title: "A spinning ASCII torus", how: "weeks around the ring, days around the tube, busier days raised and brighter", solid: torus },
+  torus: { title: "A spinning ASCII torus", how: "weeks around the ring, days around the tube, busier days raised and brighter", closed: true, solid: torus },
   planet: {
     title: "A spinning ASCII planet",
     how: "weeks around the equator, days from pole to pole, each week's busiest day on the ring, busier days raised and brighter",
+    closed: true,
     solid: planet,
   },
-  mobius: { title: "A spinning ASCII Möbius strip", how: "weeks along the band, days across it, one half twist, busier days raised and brighter", solid: mobius },
-  coil: { title: "A spinning ASCII coil", how: "weeks along the spring end to end, days around its wire, busier days raised and brighter", solid: coil },
+  mobius: {
+    title: "A spinning ASCII Möbius strip",
+    how: "weeks along the band, days across it, one half twist, busier days raised and brighter",
+    closed: true,
+    solid: mobius,
+  },
+  coil: { title: "A spinning ASCII coil", how: "weeks along the spring end to end, days around its wire, busier days raised and brighter", closed: false, solid: coil },
   twist: {
     title: "A spinning ASCII twisted ring",
     how: "weeks around the ring, a flat face a weekday, twisted so the seven faces run into one, busier days raised and brighter",
+    closed: true,
     solid: twist,
   },
-  moon: { title: "A spinning ASCII moon", how: "weeks around the equator, days from pole to pole, a crater a day, busier days deeper and brighter", solid: moon },
-  knot: { title: "A spinning ASCII trefoil knot", how: "weeks along the knot, days around its tube, busier days raised and brighter", solid: knot },
+  moon: {
+    title: "A spinning ASCII moon",
+    how: "weeks around the equator, days from pole to pole, a crater a day, busier days deeper and brighter",
+    closed: true,
+    solid: moon,
+  },
+  knot: { title: "A spinning ASCII trefoil knot", how: "weeks along the knot, days around its tube, busier days raised and brighter", closed: true, solid: knot },
   flag: {
     title: "A waving ASCII flag",
     how: "weeks from left to right, days from Sunday at the top to Saturday at the bottom, busier days raised and brighter",
+    closed: false,
     solid: flag,
   },
-} satisfies Record<string, { title: string; how: string; solid: (calendar: Calendar) => Solid }>;
+} satisfies Record<string, { title: string; how: string; closed: boolean; solid: (calendar: Calendar) => Solid }>;
 
 export type Shape = keyof typeof SHAPES;
 
@@ -79,7 +94,7 @@ const LIGHT = normalize([-0.45, 0.72, 0.53]); // toward the light, in view space
  * nothing.
  */
 export function renderShape(shape: Shape, profile: Profile, options: ShapeOptions): Frame[] {
-  const solid = SHAPES[shape].solid(calendar(profile));
+  const solid = SHAPES[shape].solid(calendar(profile, shapeWeeks(shape, profile)));
   const { cols, rows, frames, cellAspect } = options;
   // The scale that shows the solid's whole width and height.
   const cellH = Math.max((solid.half[1] * 2) / rows, (solid.half[0] * 2) / (cols * cellAspect));
@@ -132,9 +147,13 @@ export function renderShape(shape: Shape, profile: Profile, options: ShapeOption
             const lz = (m[6]! * nx + m[7]! * ny + m[8]! * nz) / nl;
             const lum = lx * light[0] + ly * light[1] + lz * light[2];
             if (lum > 0) {
-              const i = r * cols + c;
-              glyph[i] = Math.min(RAMP.length - 1, Math.floor(lum * RAMP.length));
-              levels[i] = solid.level(px, py, pz);
+              const level = solid.level(px, py, pz);
+              // A slot outside the period prints nothing, as GitHub leaves it out of the grid.
+              if (level >= 0) {
+                const i = r * cols + c;
+                glyph[i] = Math.min(RAMP.length - 1, Math.floor(lum * RAMP.length));
+                levels[i] = level;
+              }
             }
             break;
           }
@@ -147,18 +166,30 @@ export function renderShape(shape: Shape, profile: Profile, options: ShapeOption
   return out;
 }
 
-function calendar(profile: Profile): Calendar {
-  const weeks = profile.weeks.length;
-  const max = Math.max(1, ...profile.weeks.flat().map((day) => day?.count ?? 0));
-  const height = new Float64Array(weeks * 7);
-  const level = new Uint8Array(weeks * 7);
-  profile.weeks.forEach((week, w) =>
-    week.forEach((day, d) => {
-      height[w * 7 + d] = day ? Math.sqrt(day.count / max) : 0;
-      level[w * 7 + d] = day?.level ?? 0;
-    }),
-  );
-  return { weeks, height, level };
+/**
+ * Weeks a shape is made of. An open shape keeps the weeks as GitHub draws them,
+ * partial at both ends. A closed one is made of the newest whole weeks' worth
+ * of days, so where the ends meet the two partial weeks make one and no slot
+ * goes without a day; the oldest few days of the period are left out.
+ */
+export function shapeWeeks(shape: Shape, profile: Profile): number {
+  if (!SHAPES[shape].closed) return profile.weeks.length;
+  return Math.max(1, Math.floor(profile.weeks.flat().filter(Boolean).length / 7));
+}
+
+/** The calendar in `weeks` weeks. A shorter ring than the period folds it: each
+ *  slot holds the newest day of its weekday and week of the ring. */
+function calendar(profile: Profile, weeks: number): Calendar {
+  const size = weeks * 7;
+  const counts = new Float64Array(size);
+  const level = new Int8Array(size).fill(-1);
+  profile.weeks.flat().forEach((day, i) => {
+    if (!day) return;
+    counts[i % size] = day.count;
+    level[i % size] = day.level;
+  });
+  const max = Math.max(1, ...counts);
+  return { weeks, height: counts.map((count) => Math.sqrt(count / max)), level };
 }
 
 /** Height at week and day coordinates: bilinear across neighbouring days, eased

@@ -5,7 +5,7 @@ import { BAND, HALF, INSET, Ink, PAD, TEXT, baseline, piece, type Chrome, type D
 import type { YearStats } from "./stats";
 import { bare, columns, escapeXml, fit, wrap } from "./text";
 import type { Palette } from "./theme";
-import { RAMP, SHAPES, renderShape, type Frame, type Shape } from "./shapes";
+import { RAMP, SHAPES, renderShape, shapeWeeks, type Frame, type Shape } from "./shapes";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const WEEKDAYS = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
@@ -171,7 +171,7 @@ export function yearPane(profile: Profile, href: string, compact: boolean, shape
               ink.line(PAD, y, [{ text: "less", tone: "muted" }]) +
               palette.levels.map((color, level) => `<rect x="${swatchX + level * 13}" y="${y - 10}" width="10" height="10" rx="2" fill="${color}"/>`).join("") +
               ink.line(swatchX + 5 * 13 + 4, y, [{ text: "more", tone: "muted" }]) +
-              ink.lineEnd(width - PAD, y, [{ text: `${profile.weeks.length} weeks × 7 days`, tone: "muted" }]);
+              ink.lineEnd(width - PAD, y, [{ text: `${shapeWeeks(shape, profile)} weeks × 7 days`, tone: "muted" }]);
           }
 
           const slot = PERIOD / frames.length;

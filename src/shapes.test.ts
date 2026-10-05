@@ -31,3 +31,18 @@ test("every shape stays inside its frame, in every pose, and draws something in 
     }
   }
 });
+
+test("a period with contributions every day draws no day without any, though it starts and ends mid-week", () => {
+  // Wednesday to Thursday, as GitHub answers twelve months: 366 days in 53 weeks.
+  const days = Array.from({ length: 366 }, (_, i) => ({ date: "2026-01-01", count: 1 + (i % 9), level: (1 + (i % 4)) as Day["level"] }));
+  const slots = [null, null, null, ...days, null, null];
+  const partial = { weeks: Array.from({ length: slots.length / 7 }, (_, w) => slots.slice(w * 7, w * 7 + 7)) } as Profile;
+  const cols = 64;
+  const rows = 27;
+  for (const shape of Object.keys(SHAPES) as Shape[]) {
+    for (const frame of renderShape(shape, partial, { cols, rows, frames: 6, cellAspect: 0.6 })) {
+      const empty = frame.glyph.filter((g, i) => g >= 0 && frame.level[i] === 0).length;
+      expect({ shape, empty }).toEqual({ shape, empty: 0 });
+    }
+  }
+});

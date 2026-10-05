@@ -104,7 +104,10 @@ With no inputs it draws what it finds on your profile; a `feed` adds the posts p
 
 `shape` picks what the `year` pane draws. Each day is raised by its count and
 inked by its contribution level, shaded like
-[donut.c](https://www.a1k0n.net/2011/07/20/donut-math.html).
+[donut.c](https://www.a1k0n.net/2011/07/20/donut-math.html). A shape that
+closes on itself is made of the newest whole weeks, so the year's two part
+weeks meet as one and no slot is drawn without a day; `coil` and `flag` keep
+GitHub's weeks and, like GitHub, leave out the days past either end.
 
 | Shape             | The year as                                                                                                             |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------- |
