@@ -80,22 +80,22 @@ With no inputs it draws what it finds on your profile; a `feed` adds the posts p
 
 ## Panes
 
-| Pane       | Shows                                                                                     |
-| ---------- | ----------------------------------------------------------------------------------------- |
-| `year`     | Your contribution calendar as a spinning ASCII [shape](#shapes).                          |
-| `whoami`   | Your name, a few lines about you, and the year in figures: total, peak, busiest weekday, streak. |
-| `activity` | Contributions per day as a dot-matrix graph that scrolls a day at a time.                 |
-| `posts`    | The newest posts from an RSS or Atom feed.                                                |
-| `langs`    | Languages of the public repositories you committed to, weighted by your commits.          |
-| `top`      | Those repositories, most commits first.                                                   |
-| `contribs` | Your contributions by kind: commits, PRs, reviews, issues, and those in private repositories. |
-| `pinned`   | Your pinned repositories with language, stars and description.                            |
-| `prs`      | Your newest merged pull requests.                                                          |
-| `grid`     | Your contribution calendar as GitHub draws it, a cursor stepping across the weeks.         |
-| `neofetch` | Your profile as neofetch prints a machine, your year's [shape](#shapes) for a logo.       |
-| `releases` | The latest release of each of your public repositories, newest first, whatever the `year`. |
-| `log`      | Your newest commits as `git log --oneline` prints them, across your busiest public repositories. |
-| `clock`    | When you commit, as GitHub's old punch card: weekday by hour in your `timezone`.          |
+| Pane       | Shows                                                                                                    |
+| ---------- | -------------------------------------------------------------------------------------------------------- |
+| `year`     | Your contribution calendar as a spinning ASCII [shape](#shapes).                                         |
+| `whoami`   | Your name, a few lines about you, and the year in figures: total, peak, busiest weekday, streak.         |
+| `activity` | Contributions per day as a dot-matrix graph that scrolls a day at a time.                                |
+| `posts`    | The newest posts from an RSS or Atom feed.                                                               |
+| `langs`    | Languages of the public repositories you committed to, weighted by your commits.                         |
+| `top`      | Those repositories, most commits first.                                                                  |
+| `contribs` | Your contributions by kind: commits, PRs, reviews, issues, and those in private repositories.            |
+| `pinned`   | Your pinned repositories with language, stars and description.                                           |
+| `prs`      | Your newest merged pull requests.                                                                        |
+| `grid`     | Your contribution calendar as GitHub draws it, a cursor stepping across the weeks.                       |
+| `neofetch` | Your profile as neofetch prints a machine, your year's [shape](#shapes) for a logo.                      |
+| `releases` | The latest release of each of your public repositories, newest first, whatever the `year`.               |
+| `log`      | Your newest commits as `git log --oneline` prints them, across your busiest public repositories.         |
+| `clock`    | When you commit, as GitHub's old punch card: weekday by hour in your `timezone`.                         |
 | `trends`   | Stars, followers and contributions over 90 days as sparklines. Fills a day at a time from the first run. |
 
 `bar` is the powerline status line: your session name, one segment per link, and the day it was drawn.
@@ -106,16 +106,16 @@ With no inputs it draws what it finds on your profile; a `feed` adds the posts p
 inked by its contribution level, shaded like
 [donut.c](https://www.a1k0n.net/2011/07/20/donut-math.html).
 
-| Shape              | The year as                                                                   |
-| ------------------ | ----------------------------------------------------------------------------- |
-| `torus` (default)  | a torus: weeks around the ring, days around the tube.                         |
-| `planet`           | a ringed planet: weeks around the equator, days from pole to pole, and each week's busiest day on the ring. |
-| `mobius`           | a Möbius strip: weeks along the band, days across it, and one half twist.     |
-| `coil`             | a spring: weeks along the wire from end to end, a turn a quarter, days around the wire. |
-| `twist`            | a heptagonal ring: weeks around it, a flat face a weekday, twisted a seventh of a turn a lap so the faces run into one. |
-| `moon`             | a moon lit from the side: weeks around the equator, days from pole to pole, and a crater a day, deeper the busier. |
-| `knot`             | a trefoil knot: weeks along the knot, days around its tube.                   |
-| `flag`             | a banner in the wind: weeks from left to right, Sunday on top, as GitHub draws it. |
+| Shape             | The year as                                                                                                             |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `torus` (default) | a torus: weeks around the ring, days around the tube.                                                                   |
+| `planet`          | a ringed planet: weeks around the equator, days from pole to pole, and each week's busiest day on the ring.             |
+| `mobius`          | a Möbius strip: weeks along the band, days across it, and one half twist.                                               |
+| `coil`            | a spring: weeks along the wire from end to end, a turn a quarter, days around the wire.                                 |
+| `twist`           | a heptagonal ring: weeks around it, a flat face a weekday, twisted a seventh of a turn a lap so the faces run into one. |
+| `moon`            | a moon lit from the side: weeks around the equator, days from pole to pole, and a crater a day, deeper the busier.      |
+| `knot`            | a trefoil knot: weeks along the knot, days around its tube.                                                             |
+| `flag`            | a banner in the wind: weeks from left to right, Sunday on top, as GitHub draws it.                                      |
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/shapes-dark.png">
@@ -153,33 +153,33 @@ layout: |
 
 ## Inputs
 
-| Input       | Default                                   | What it does                                                                   |
-| ----------- | ----------------------------------------- | ------------------------------------------------------------------------------ |
-| `user`      | repository owner                          | Whose profile is drawn.                                                        |
-| `token`     | `github.token`                            | Reads the profile over GraphQL. It sees public data only.                      |
-| `theme`     | `phosphor`                                | `phosphor` (green), `amber`, `ice` (blue-white) or `github`.                   |
-| `accent`    | the theme's                               | One `#rrggbb` colour for the accent and the contribution ramp, kept readable on GitHub's dark and light grounds. |
+| Input       | Default                                   | What it does                                                                                                                                        |
+| ----------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `user`      | repository owner                          | Whose profile is drawn.                                                                                                                             |
+| `token`     | `github.token`                            | Reads the profile over GraphQL. It sees public data only.                                                                                           |
+| `theme`     | `phosphor`                                | `phosphor` (green), `amber`, `ice` (blue-white) or `github`.                                                                                        |
+| `accent`    | the theme's                               | One `#rrggbb` colour for the accent and the contribution ramp, kept readable on GitHub's dark and light grounds.                                    |
 | `effects`   | none                                      | `crt` (scanlines and a faint flicker on every image), `typing` (the `whoami` name types itself in), or both. The motion stops under reduced motion. |
-| `shape`     | `torus`                                   | What the `year` pane draws, and `neofetch` for a logo: `torus`, `planet`, `mobius`, `coil`, `twist`, `moon`, `knot` or `flag`. |
-| `year`      | the last twelve months                    | A calendar year to draw instead, such as `2024`.                               |
-| `timezone`  | `UTC`                                     | The IANA time zone `clock` reads hours in, such as `Europe/Istanbul`.          |
-| `layout`    | see [Layout](#layout)                     | The grid.                                                                      |
-| `density`   | `full`                                    | `compact` makes every pane compact.                                            |
-| `whoami`    | name, bio, company, location              | Lines for `whoami`. The first is your name.                                    |
-| `session`   | your login                                | The name at the left of the status line.                                       |
-| `feed`      | none                                      | RSS or Atom feed for `posts`.                                                  |
-| `feed_note` | none                                      | `#` comment lines at the top of `posts`.                                       |
-| `posts`     | `5`                                       | How many posts, 1 to 20.                                                       |
-| `posts_url` | the feed's site                           | Where "all of them at" points.                                                 |
-| `links`     | website and social accounts               | `label url` per line, one status-line segment each. Links past the line's width are left out. |
-| `repos`     | `5`                                       | How many repositories `top` lists, 1 to 20.                                    |
-| `out`       | `afterglow`                               | Where the SVGs are written.                                                    |
-| `readme`    | `README.md`                               | Updated between the markers; empty leaves it alone. The block is always in `<out>/README.block.md`. |
-| `base_url`  | `raw.githubusercontent.com/<repo>/output` | Where the README loads the images from.                                        |
+| `shape`     | `torus`                                   | What the `year` pane draws, and `neofetch` for a logo: `torus`, `planet`, `mobius`, `coil`, `twist`, `moon`, `knot` or `flag`.                      |
+| `year`      | the last twelve months                    | A calendar year to draw instead, such as `2024`.                                                                                                    |
+| `timezone`  | `UTC`                                     | The IANA time zone `clock` reads hours in, such as `Europe/Istanbul`.                                                                               |
+| `layout`    | see [Layout](#layout)                     | The grid.                                                                                                                                           |
+| `density`   | `full`                                    | `compact` makes every pane compact.                                                                                                                 |
+| `whoami`    | name, bio, company, location              | Lines for `whoami`. The first is your name.                                                                                                         |
+| `session`   | your login                                | The name at the left of the status line.                                                                                                            |
+| `feed`      | none                                      | RSS or Atom feed for `posts`.                                                                                                                       |
+| `feed_note` | none                                      | `#` comment lines at the top of `posts`.                                                                                                            |
+| `posts`     | `5`                                       | How many posts, 1 to 20.                                                                                                                            |
+| `posts_url` | the feed's site                           | Where "all of them at" points.                                                                                                                      |
+| `links`     | website and social accounts               | `label url` per line, one status-line segment each. Links past the line's width are left out.                                                       |
+| `repos`     | `5`                                       | How many repositories `top` lists, 1 to 20.                                                                                                         |
+| `out`       | `afterglow`                               | Where the SVGs are written, with `history.json` for `trends` and a local `preview.html`.                                                            |
+| `readme`    | `README.md`                               | Updated between the markers; empty leaves it alone. The block is always in `<out>/README.block.md`.                                                 |
+| `base_url`  | `raw.githubusercontent.com/<repo>/output` | Where the README loads the images from.                                                                                                             |
 
-`langs`, `top`, `pinned`, `prs`, `releases`, `log`, `clock` and `neofetch` count
-public repositories only. A streak shorter than two days is left out; with
-`year`, the streak is that year's longest.
+`langs`, `top`, `pinned`, `prs`, `releases`, `log` and `clock` read public
+repositories only, as do `neofetch`'s repository figures. A streak shorter than
+two days is left out; for a past `year`, it is that year's longest.
 
 ## Run it locally
 
