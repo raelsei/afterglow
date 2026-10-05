@@ -1,7 +1,7 @@
 import { FULL, HALF, RIGHT_MARGIN } from "./pane";
 import { flatten, measureStack, place, type Image, type Pane } from "./panes";
 
-export const PANE_IDS = ["year", "whoami", "activity", "posts", "langs", "top"] as const;
+export const PANE_IDS = ["year", "whoami", "activity", "posts", "langs", "top", "contribs", "pinned", "prs", "grid", "neofetch", "releases", "log", "clock", "trends"] as const;
 export type PaneId = (typeof PANE_IDS)[number];
 
 export const DEFAULT_LAYOUT = "year whoami\nactivity posts\nlangs top\nbar";

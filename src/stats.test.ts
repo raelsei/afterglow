@@ -10,9 +10,11 @@ function week(sunday: string, counts: (number | null)[]): (Day | null)[] {
   );
 }
 
-function profile(weeks: (Day | null)[][]): Profile {
+function profile(weeks: (Day | null)[][], live = true): Profile {
   const total = weeks.flat().reduce((sum, day) => sum + (day?.count ?? 0), 0);
-  return { login: "x", name: null, bio: null, company: null, location: null, links: [], total, weeks, repos: [] };
+  const kinds = { commits: 0, pullRequests: 0, reviews: 0, issues: 0, restricted: 0 };
+  const account = { since: new Date(0), followers: 0, following: 0, repoCount: 0, stars: 0, releases: [] };
+  return { id: "x", login: "x", name: null, bio: null, company: null, location: null, links: [], year: live ? null : 2024, live, total, kinds, weeks, repos: [], pinned: [], pulls: [], ...account };
 }
 
 test("a quiet today does not break the streak, a quiet yesterday does", () => {
@@ -21,6 +23,11 @@ test("a quiet today does not break the streak, a quiet yesterday does", () => {
 
   const broken = yearStats(profile([week("2026-09-13", [1, 2, 3, 4, 5, 0, 1])]));
   expect(broken.streak).toBe(1);
+});
+
+test("a year gone by counts its longest run instead", () => {
+  const stats = yearStats(profile([week("2024-12-15", [1, 2, 3, 0, 1, 1, 0]), week("2024-12-22", [4, 4, 0, 0, 0, 0, 1])], false));
+  expect(stats.streak).toBe(3);
 });
 
 test("peak is the latest of tied days and the busiest weekday sums every week", () => {

@@ -1,3 +1,4 @@
+import { COLUMN } from "./pane";
 import { escapeXml } from "./text";
 
 export const START = "<!-- afterglow:start -->";
@@ -42,6 +43,35 @@ export function readmeBlock(rows: Row[], base: string): string {
     })
     .join("\n");
   return `${START}\n<p>\n${body}\n</p>\n${END}`;
+}
+
+/** Images a README loads from directly under `base`, by file name. */
+export function referencedImages(readme: string, base: string): string[] {
+  const prefix = `${base.replace(/\/+$/, "")}/`;
+  const files = [...readme.matchAll(/(?:src|srcset)="([^"]+\.svg)"/g)]
+    .map((match) => match[1]!.replace(/&#(\d+);/g, (_, code: string) => String.fromCharCode(Number(code))))
+    .filter((url) => url.startsWith(prefix) && !url.slice(prefix.length).includes("/"))
+    .map((url) => url.slice(prefix.length));
+  return [...new Set(files)];
+}
+
+/** A page that lays the block out as GitHub's README column does, to look at before publishing. */
+export function previewPage(block: string): string {
+  return `<!doctype html>
+<meta charset="utf-8">
+<title>afterglow preview</title>
+<style>
+body{margin:0;padding:32px 16px;background:#fff;font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif}
+@media (prefers-color-scheme:dark){body{background:#0d1117}}
+article{max-width:${COLUMN}px;margin:0 auto}
+img{max-width:100%;box-sizing:content-box}
+img[align=left]{padding-right:20px}
+img[align=right]{padding-left:20px}
+</style>
+<article>
+${block}
+</article>
+`;
 }
 
 /** Replaces whatever sits between the markers. A README without them is left

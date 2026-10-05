@@ -15,6 +15,9 @@ export interface Feed {
 export async function fetchFeed(url: string): Promise<Feed> {
   const res = await fetch(url, {
     headers: { "user-agent": "afterglow", accept: "application/rss+xml, application/atom+xml, application/xml, text/xml" },
+    signal: AbortSignal.timeout(30_000),
+  }).catch((error: Error) => {
+    throw new Error(`Feed ${url} did not answer: ${error.message}`);
   });
   if (!res.ok) throw new Error(`Feed ${url} answered ${res.status}`);
   const feed = parseFeed(await res.text(), url);

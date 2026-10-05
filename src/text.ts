@@ -57,6 +57,11 @@ export function fit(text: string, width: number): string {
   return `${cut.trimEnd()}…`;
 }
 
+/** A URL as a reader says it: no scheme, no `www.`, no trailing slash. */
+export function bare(url: string): string {
+  return url.replace(/^(mailto:|https?:\/\/(www\.)?)/, "").replace(/\/$/, "");
+}
+
 export function escapeXml(text: string): string {
   return text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }

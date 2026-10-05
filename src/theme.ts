@@ -1,3 +1,7 @@
+/** What the `effects` input may name. */
+export const EFFECTS = ["crt", "typing"] as const;
+export type Effect = (typeof EFFECTS)[number];
+
 export interface Palette {
   fg: string;
   muted: string;
@@ -8,10 +12,12 @@ export interface Palette {
   onAccent: string;
   /** Ink for contribution levels 0 to 4, as GitHub buckets them. */
   levels: readonly [string, string, string, string, string];
-  /** Phosphor bloom around the torus. Ink on paper does not glow. */
+  /** Phosphor bloom around the year's shape. Ink on paper does not glow. */
   glow: boolean;
-  /** Opacity of a torus frame one and two slots after it was drawn. */
+  /** Opacity of a year frame one and two slots after it was drawn. */
   afterglow: readonly [number, number];
+  /** Opt-in motion from the `effects` input, carried here because every image is drawn from a palette. */
+  effects?: ReadonlySet<Effect>;
 }
 
 export interface Theme {
@@ -23,7 +29,7 @@ export interface Theme {
  * Named after the phosphors CRTs were coated with. Text tones clear 4.5:1 on
  * GitHub's own grounds, #0d1117 in dark mode and #ffffff in light, because
  * every image here sits on a transparent ground. Light ramps keep level 0 at
- * 2:1 and level 1 at 3:1 on white, so the quiet half of the torus still reads.
+ * 2:1 and level 1 at 3:1 on white, so the quiet half of the year still reads.
  */
 export const THEMES: Record<string, Theme> = {
   // P1 green, in koray.dev's Phosphor palette.
@@ -119,3 +125,60 @@ export const THEMES: Record<string, Theme> = {
     },
   },
 };
+
+/** GitHub's page grounds: every image here is transparent and sits on one. */
+const GROUND = { dark: "#0d1117", light: "#ffffff" } as const;
+
+/**
+ * A theme with its accent swapped for `hex` and the contribution ramp rebuilt
+ * around it. The accent is lightened or darkened until it reads at 4.5:1 on
+ * GitHub's ground in each mode, the bar the built-in themes clear.
+ */
+export function withAccent(theme: Theme, hex: string): Theme {
+  return { dark: accented(theme.dark, hex, "dark"), light: accented(theme.light, hex, "light") };
+}
+
+function accented(palette: Palette, hex: string, mode: "dark" | "light"): Palette {
+  const ground = GROUND[mode];
+  const away = mode === "dark" ? "#ffffff" : "#000000"; // the way contrast grows
+  const accent = readable(hex, ground, away, 4.5);
+  const [base] = palette.levels;
+  return {
+    ...palette,
+    accent,
+    onAccent: contrast(accent, "#000000") >= contrast(accent, "#ffffff") ? "#000000" : "#ffffff",
+    // Shaped like the built-in ramps: level 3 is the accent, level 4 one step past it.
+    levels:
+      mode === "dark"
+        ? [base, mix(base, accent, 0.5), mix(base, accent, 0.75), accent, mix(accent, "#ffffff", 0.65)]
+        : [base, readable(mix(accent, "#ffffff", 0.35), ground, away, 3), mix(accent, "#ffffff", 0.15), accent, mix(accent, "#000000", 0.5)],
+  };
+}
+
+/** `hex` moved toward `away` until it reads at `ratio` on `ground`. */
+function readable(hex: string, ground: string, away: string, ratio: number): string {
+  let color = hex;
+  for (let step = 1; contrast(color, ground) < ratio && step <= 20; step++) color = mix(hex, away, step / 20);
+  return color;
+}
+
+/** WCAG contrast ratio of two `#rrggbb` colours, 1 to 21. */
+export function contrast(a: string, b: string): number {
+  const luminance = (hex: string) => {
+    const [r, g, bl] = rgb(hex).map((v) => (v / 255 <= 0.04045 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4)) as [number, number, number];
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  };
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+function mix(a: string, b: string, t: number): string {
+  const from = rgb(a);
+  const to = rgb(b);
+  return `#${from.map((v, i) => Math.round(v + (to[i]! - v) * t).toString(16).padStart(2, "0")).join("")}`;
+}
+
+function rgb(hex: string): [number, number, number] {
+  const n = Number.parseInt(hex.slice(1), 16);
+  return [n >> 16, (n >> 8) & 255, n & 255];
+}

@@ -1,5 +1,5 @@
 name: afterglow
-description: Your GitHub profile as a phosphor terminal dashboard. A spinning ASCII torus of your year, live panes, your posts and links, all animated SVG.
+description: Your GitHub profile as a phosphor terminal dashboard. Your year as a spinning ASCII shape, live panes, your posts and links, all animated SVG.
 author: Koray Güler
 branding:
   icon: terminal
@@ -7,58 +7,50 @@ branding:
 
 inputs:
   user:
-    description: GitHub login to draw.
-    default: ${{ github.repository_owner }}
+    description: GitHub login to draw. Defaults to the repository owner.
   token:
     description: Token for the GraphQL calls. The workflow's own token is enough; it sees public data only.
     default: ${{ github.token }}
   theme:
-    description: phosphor (green), amber, ice (blue-white) or github (GitHub's own greens).
-    default: phosphor
+    description: phosphor (green, the default), amber, ice (blue-white) or github (GitHub's own greens).
+  accent:
+    description: One `#rrggbb` colour for the theme's accent and contribution ramp, lightened or darkened until it reads on GitHub's dark and light grounds.
+  effects:
+    description: Opt-in motion, space- or comma-separated. crt (scanlines and a faint flicker on every image), typing (the whoami name types itself in). Defaults to none; the motion stops under reduced motion.
+  shape:
+    description: What the year pane draws, and neofetch for a logo. torus (the default), planet, mobius, coil, twist, moon, knot or flag.
+  year:
+    description: A calendar year to draw, such as 2024. Defaults to the last twelve months.
+  timezone:
+    description: IANA time zone the clock pane reads commit hours in, such as Europe/Istanbul. Defaults to UTC.
   layout:
     description: |
-      The grid, one row per line: one pane (spans both columns) or two (share one height), from year, whoami, activity, posts, langs, top; `bar` alone on a line for the status line. A pane left out is off; one with no data (posts without a feed) drops out. Add :compact or :full to a name to size that pane. With `|` between columns, an empty side extends the pane above it down beside the next row (`year | whoami` then `     | posts`).
-    default: |
-      year whoami
-      activity posts
-      langs top
-      bar
+      The grid, one row per line: one pane (spans both columns) or two (share one height), from year, whoami, activity, posts, langs, top, contribs, pinned, prs, grid, neofetch, releases, log, clock, trends; `bar` alone on a line for the status line. A pane left out is off; one with no data (posts without a feed) drops out. Add :compact or :full to a name to size that pane. With `|` between columns, an empty side extends the pane above it down beside the next row (`year | whoami` then `     | posts`). Defaults to `year | whoami`, `activity | posts`, `langs | top`, `bar`.
   density:
-    description: full or compact. Compact panes take about half the height; `:full` or `:compact` on a pane overrides.
-    default: full
+    description: full (the default) or compact. Compact panes take about half the height; `:full` or `:compact` on a pane overrides.
   whoami:
     description: Lines for the whoami pane. The first is your name, set large; blank lines are kept. Defaults to your GitHub name, bio, company and location.
-    default: ""
   session:
     description: Session name at the left of the status line. Defaults to your login.
-    default: ""
   feed:
     description: RSS or Atom feed URL for the posts pane; each post is its own link.
-    default: ""
   feed_note:
     description: Lines printed as `#` comments at the top of the posts pane.
-    default: ""
   posts:
-    description: How many posts to list, 1 to 20.
-    default: "5"
+    description: How many posts to list, 1 to 20. Defaults to 5.
   posts_url:
     description: Where the "all of them at" line points. Defaults to the site the feed names.
-    default: ""
   links:
-    description: One `label url` per line, one status-line segment each, labelled by `label`. Defaults to the website and social accounts on your GitHub profile.
-    default: ""
+    description: One `label url` per line, one status-line segment each, labelled by `label`; links past the line's width are left out. Defaults to the website and social accounts on your GitHub profile.
   repos:
-    description: How many repositories the top pane lists, 1 to 20.
-    default: "5"
+    description: How many repositories the top pane lists, 1 to 20. Defaults to 5.
   out:
-    description: Directory the SVGs are written to. Publish it to the branch `base_url` points at.
-    default: afterglow
+    description: Directory the SVGs are written to, `afterglow` by default. Publish it to the branch `base_url` points at.
   readme:
     description: README to update between `<!-- afterglow:start -->` and `<!-- afterglow:end -->`. Empty to leave it alone; the block is always written to `<out>/README.block.md`.
     default: README.md
   base_url:
     description: URL the README loads the SVGs from. Defaults to `https://raw.githubusercontent.com/<owner>/<repo>/output`.
-    default: ""
 
 runs:
   using: node24

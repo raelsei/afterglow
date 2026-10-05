@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { END, START, injectBlock, readmeBlock } from "./readme";
+import { END, START, injectBlock, readmeBlock, referencedImages } from "./readme";
 
 test("only the text between the markers is replaced", () => {
   const readme = `# me\n\nabove\n\n${START}\nstale\n${END}\n\nbelow\n`;
@@ -33,4 +33,11 @@ test("a row floats its left pane, stacks its right column line by line, then cle
   // Chips on one line sit flush: no whitespace between them.
   expect(block).toMatch(/d-light\.svg"[^>]*><\/picture><picture>[^\n]*e-light/);
   expect(block.match(/<br clear="all">/g)).toHaveLength(2);
+});
+
+test("the images a block loads are found again in it, and only those directly under the base", () => {
+  const base = "https://raw.example/me/me/output";
+  const block = readmeBlock([{ float: { name: "a", width: 400, alt: "a", href: "https://x.dev/" }, lines: [[{ name: "b", width: 400, alt: "b" }]] }], base);
+  const readme = `![badge](https://img.shields.io/x.svg)\n<img src="${base}/../me/x.svg">\n${block}\n${block}`;
+  expect(referencedImages(readme, `${base}/`)).toEqual(["a-dark.svg", "a-light.svg", "b-dark.svg", "b-light.svg"]);
 });

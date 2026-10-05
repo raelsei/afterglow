@@ -6,8 +6,9 @@ export interface YearStats {
   peak: Day | null;
   /** 0 = Sunday. Null for an empty year. */
   busiestWeekday: number | null;
-  /** Consecutive days with at least one contribution, ending today. A quiet
-   *  today does not break it yet; the day is not over. */
+  /** Consecutive days with at least one contribution. While the window runs up
+   *  to today, the run ending today, and a quiet today does not break it yet;
+   *  for a year gone by, its longest run. */
   streak: number;
 }
 
@@ -22,9 +23,17 @@ export function yearStats(profile: Profile): YearStats {
   }
 
   let streak = 0;
-  let i = days.length - 1;
-  if (i >= 0 && days[i]!.count === 0) i--;
-  for (; i >= 0 && days[i]!.count > 0; i--) streak++;
+  if (profile.live) {
+    let i = days.length - 1;
+    if (i >= 0 && days[i]!.count === 0) i--;
+    for (; i >= 0 && days[i]!.count > 0; i--) streak++;
+  } else {
+    let run = 0;
+    for (const day of days) {
+      run = day.count > 0 ? run + 1 : 0;
+      streak = Math.max(streak, run);
+    }
+  }
 
   const busiest = Math.max(...perWeekday);
   return {

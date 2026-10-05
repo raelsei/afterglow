@@ -1,0 +1,32 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      # The Bun that builds dist/index.mjs, from packageManager: another minifier emits other bytes.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun test
+
+      # The action runs the committed bundle, so it has to be the bundle of this source.
+      - name: dist/index.mjs is built from this source
+        run: bun run build && git diff --exit-code --stat dist/
+
+      # Draw the owner's profile with the action itself, on the runtime users get.
+      - uses: ./
+        with:
+          readme: ""
+          out: ${{ runner.temp }}/afterglow

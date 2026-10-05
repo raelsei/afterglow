@@ -137,16 +137,33 @@ export function piece(options: {
     path += `M${left} 0V${height}M${right} 0V${height}`;
   }
 
+  // The `crt` effect: every fourth pixel row dims, a pitch that divides the
+  // band so the lines run on across a stack's images, and the whole image
+  // breathes a few percent. A mask, not an overlay, so the transparent ground
+  // stays untouched in both modes.
+  const crt = palette.effects?.has("crt");
+  const defs =
+    (drawn.defs ?? "") +
+    (crt
+      ? `<pattern id="crt-lines" width="${canvas}" height="4" patternUnits="userSpaceOnUse"><rect width="${canvas}" height="3" fill="#fff"/>` +
+        `<rect y="3" width="${canvas}" height="1" fill="#fff" fill-opacity=".7"/></pattern>` +
+        `<mask id="crt" maskUnits="userSpaceOnUse" x="0" y="0" width="${canvas}" height="${height}"><rect width="${canvas}" height="${height}" fill="url(#crt-lines)"/></mask>`
+      : "");
   const css =
     fontFaces(ink.regular, ink.bold) +
     `text{font-family:${FONT_STACK};font-size:${TEXT.size}px}.b{font-weight:700}` +
     `.fg{fill:${palette.fg}}.muted{fill:${palette.muted}}.accent{fill:${palette.accent}}.onAccent{fill:${palette.onAccent}}` +
     `.box{fill:none;stroke:${palette.border};stroke-width:1}` +
     `.link{fill:none;stroke:${palette.muted};stroke-width:1.2;stroke-dasharray:0 3;stroke-linecap:round}` +
-    (drawn.css ?? "");
+    (drawn.css ?? "") +
+    (crt
+      ? `.crt{animation:flicker 9s ease-in-out infinite}@keyframes flicker{0%,100%{opacity:1}46%{opacity:.97}50%{opacity:.93}54%{opacity:.97}}` +
+        `@media (prefers-reduced-motion:reduce){.crt{animation:none}}`
+      : "");
+  const content = `${path ? `<path class="box" d="${path}"/>` : ""}${labels}${drawn.body}`;
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas}" height="${height}" viewBox="0 0 ${canvas} ${height}" role="img">` +
-    `<title>${escapeXml(options.title)}</title><style>${css}</style>${drawn.defs ? `<defs>${drawn.defs}</defs>` : ""}` +
-    `${path ? `<path class="box" d="${path}"/>` : ""}${labels}${drawn.body}</svg>\n`
+    `<title>${escapeXml(options.title)}</title><style>${css}</style>${defs ? `<defs>${defs}</defs>` : ""}` +
+    `${crt ? `<g class="crt" mask="url(#crt)">${content}</g>` : content}</svg>\n`
   );
 }

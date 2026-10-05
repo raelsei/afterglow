@@ -5,112 +5,14 @@
 
 # afterglow
 
-Your GitHub profile as a phosphor terminal dashboard: the year spinning as an
-ASCII torus, live panes in the manner of `btop`, your newest posts, and your
-links along a powerline status line. Every pane is an animated SVG redrawn daily by a GitHub
-Action, and every figure in it is fetched, never typed.
+Your GitHub profile as a phosphor terminal dashboard: your year as a spinning
+ASCII shape, live panes in the manner of `btop`, your newest posts, and your
+links along a powerline status line. Every pane is an animated SVG, redrawn
+daily by a GitHub Action from data it fetches.
 
 Live on [github.com/raelsei](https://github.com/raelsei).
 
-## Panes
-
-| Pane       | What it shows                                                                                                  |
-| ---------- | -------------------------------------------------------------------------------------------------------------- |
-| `year`     | Your contribution calendar wrapped around a torus and spun like [donut.c](https://www.a1k0n.net/2011/07/20/donut-math.html). |
-| `whoami`   | Your name, a few lines about you, and the year in four figures: total, busiest day, busiest weekday, streak.    |
-| `activity` | Contributions per day as a dot-matrix graph that scrolls a day at a time, newest on the right.                 |
-| `posts`    | The newest posts from an RSS or Atom feed. Every post is its own link.                                          |
-| `langs`    | Languages of the public repositories you committed to this year, weighted by your commits.                     |
-| `top`      | Those repositories, most commits first. Every row is its own link.                                             |
-
-Below them, a powerline status line as tmux and vim themes draw it: your
-session name, one segment per link, and the day it was drawn.
-
-## Layout
-
-`layout` is the grid, one row per line. A row holds one pane, which spans both
-columns, or two, which share one height so no row leaves half the page empty.
-A pane you leave out is off. `bar` on a line of its own places the status line.
-
-```yaml
-layout: |
-  year      | whoami
-  activity  | posts
-  langs     | top
-  bar
-```
-
-That is the default. Every pane also has a compact form, about half the
-height: `density: compact` makes them all compact, and `:compact` or `:full`
-after a name overrides it for that pane. The default layout is about 1,040px
-tall at full density and 670px compact; each row you leave out saves another
-200 or so.
-
-```yaml
-density: compact
-layout: |
-  year:full | whoami:full   # the first row at full size, the rest compact
-  posts     | activity
-  top
-  bar
-```
-
-A pane can reach down beside several others. With `|` between the columns,
-leave a side empty and the pane above it extends into that row, as tall as
-everything stacked beside it:
-
-```yaml
-layout: |
-  year | whoami
-       | posts     # the torus runs down beside both
-  bar
-```
-
-Only one side of a row can reach down; the other side stacks.
-
-GitHub's Markdown leaves one layout tool, floating images, and it shapes what
-a row can be:
-
-- A list (`posts`, `top`) is one image per line so each line can link. It
-  flows beside the pane in the other column, on either side.
-- Two lists in one row do not fit that way, so the left one is drawn as a
-  single image: its lines stop being separate links and the pane links as a
-  whole. The same happens to a list that reaches down beside others.
-- On a narrow screen the columns fall into one. The pane that floats comes
-  first, so a row written `posts | activity` shows `activity` first on a
-  phone.
-
-## How a year becomes a donut
-
-The contribution calendar is a grid, 53 weeks by 7 days, and a torus is a grid
-with both pairs of edges glued together. Weeks go around the ring and weekdays
-around the tube, so the year closes on itself: last week sits next to the one a
-year ago. Each day lifts the surface by the square root of its count and takes
-one of GitHub's five contribution levels as its ink. Every frame is ray-marched
-and shaded into donut.c's ramp, `.,-~:;=!*#$@`, and a surface turned away from
-the light prints nothing, as in the original.
-
-## Why it is built the way it is
-
-GitHub serves README images through a proxy, strips every script and style
-from the Markdown, and an SVG loaded as an image may not fetch anything. So:
-
-- The torus is 120 frames drawn once; one CSS keyframe shows each in turn,
-  eight a second, and a frame lingers two more slots at falling opacity, the
-  way a phosphor screen fades.
-- Every SVG carries its own copy of [Google Sans Code](https://github.com/googlefonts/googlesans-code),
-  cut down to the characters it draws.
-- The layout is floats. A pane with `align="left"` gets GitHub's 20px padding,
-  which is the gutter; `<br clear="all">` ends a row. Everything sits on a 28px
-  band, the smallest pitch a phone still shows without gaps once GitHub scales
-  a 410px pane into its column.
-- Lists are one image per line so each line can be a link, and the box around
-  them is drawn a slice at a time.
-- Each image ships dark and light files, and `<picture>` follows the viewer's
-  GitHub theme. Under `prefers-reduced-motion` nothing moves: the torus holds
-  its fullest pose and the graph its newest window.
-
-## Use it
+## Quick start
 
 1. Put the markers where the dashboard should go in your profile README
    (`<you>/<you>/README.md`):
@@ -148,7 +50,7 @@ from the Markdown, and an SVG loaded as an image may not fetch anything. So:
 
          - uses: raelsei/afterglow@v3
            with:
-             theme: phosphor
+             shape: planet
              feed: https://your.site/rss.xml
 
          # Images first, so the README never points at files that are not there yet.
@@ -171,57 +73,144 @@ from the Markdown, and an SVG loaded as an image may not fetch anything. So:
              git push
    ```
 
-3. Run it once from the Actions tab. After that it redraws daily, and a push
-   made with the workflow's own token does not trigger it again.
+3. Run it once from the Actions tab. It redraws daily after that.
 
-With no inputs at all it draws everything it can find on your profile: name,
-bio, company, location, website and social accounts. A feed adds the posts
-pane.
+With no inputs it draws what it finds on your profile; a `feed` adds the posts pane.
 
-Every image is named by its content. GitHub's raw CDN keeps a file for five
-minutes and ignores query strings, so a drawing that changed under a fixed name
-would reach visitors late and unevenly; a new name reaches them with the README
-that points to it. The `output` branch is force-pushed, so it never grows a
-history, and each run carries over the images the previous README used, so the
-moment between publishing and committing shows the old dashboard, not holes.
-The README therefore changes whenever a drawing does, which is most days.
+## Panes
+
+| Pane       | Shows                                                                                     |
+| ---------- | ----------------------------------------------------------------------------------------- |
+| `year`     | Your contribution calendar as a spinning ASCII [shape](#shapes).                          |
+| `whoami`   | Your name, a few lines about you, and the year in figures: total, peak, busiest weekday, streak. |
+| `activity` | Contributions per day as a dot-matrix graph that scrolls a day at a time.                 |
+| `posts`    | The newest posts from an RSS or Atom feed.                                                |
+| `langs`    | Languages of the public repositories you committed to, weighted by your commits.          |
+| `top`      | Those repositories, most commits first.                                                   |
+| `contribs` | Your contributions by kind: commits, PRs, reviews, issues, and those in private repositories. |
+| `pinned`   | Your pinned repositories with language, stars and description.                            |
+| `prs`      | Your newest merged pull requests.                                                          |
+| `grid`     | Your contribution calendar as GitHub draws it, a cursor stepping across the weeks.         |
+| `neofetch` | Your profile as neofetch prints a machine, your year's [shape](#shapes) for a logo.       |
+| `releases` | The latest release of each of your public repositories, newest first, whatever the `year`. |
+| `log`      | Your newest commits as `git log --oneline` prints them, across your busiest public repositories. |
+| `clock`    | When you commit, as GitHub's old punch card: weekday by hour in your `timezone`.          |
+| `trends`   | Stars, followers and contributions over 90 days as sparklines. Fills a day at a time from the first run. |
+
+`bar` is the powerline status line: your session name, one segment per link, and the day it was drawn.
+
+## Shapes
+
+`shape` picks what the `year` pane draws. Each day is raised by its count and
+inked by its contribution level, shaded like
+[donut.c](https://www.a1k0n.net/2011/07/20/donut-math.html).
+
+| Shape              | The year as                                                                   |
+| ------------------ | ----------------------------------------------------------------------------- |
+| `torus` (default)  | a torus: weeks around the ring, days around the tube.                         |
+| `planet`           | a ringed planet: weeks around the equator, days from pole to pole, and each week's busiest day on the ring. |
+| `mobius`           | a Möbius strip: weeks along the band, days across it, and one half twist.     |
+| `coil`             | a spring: weeks along the wire from end to end, a turn a quarter, days around the wire. |
+| `twist`            | a heptagonal ring: weeks around it, a flat face a weekday, twisted a seventh of a turn a lap so the faces run into one. |
+| `moon`             | a moon lit from the side: weeks around the equator, days from pole to pole, and a crater a day, deeper the busier. |
+| `knot`             | a trefoil knot: weeks along the knot, days around its tube.                   |
+| `flag`             | a banner in the wind: weeks from left to right, Sunday on top, as GitHub draws it. |
+
+## Layout
+
+`layout` is the grid, one row per line. A row holds one pane across both
+columns, or two side by side at one height. A pane left out is off; `bar` on a
+line of its own places the status line. This is the default:
+
+```yaml
+layout: |
+  year      | whoami
+  activity  | posts
+  langs     | top
+  bar
+```
+
+- `:compact` or `:full` after a name sizes that pane; `density: compact` sizes
+  them all. Compact is about half the height.
+- Leave a side empty and the pane above reaches down beside the next row:
+
+  ```yaml
+  layout: |
+    year | whoami
+         | contribs
+  ```
+
+- Lists (`posts`, `top`, `pinned`, `prs`, `releases`, `log`) are one image per
+  line, so every line is its own link. Two lists in one row, or a list reaching
+  down, are drawn as one image and link as a whole.
+- On a phone the columns stack, and the pane that floats comes first.
 
 ## Inputs
 
-| Input       | Default                                  | What it does                                                                       |
-| ----------- | ---------------------------------------- | ---------------------------------------------------------------------------------- |
-| `user`      | repository owner                         | Whose profile is drawn.                                                            |
-| `token`     | `github.token`                           | Reads the profile over GraphQL. Private repositories never appear.                 |
-| `theme`     | `phosphor`                               | `phosphor` (P1 green), `amber` (P3), `ice` (P4 blue-white) or `github`.            |
-| `layout`    | see [Layout](#layout)                    | The grid: one row per line, one or two panes each, `bar` for the status line.      |
-| `density`   | `full`                                   | `compact` makes every pane compact; `:full` or `:compact` after a name overrides.  |
-| `whoami`    | name, bio, company, location             | Lines for `whoami`. The first is your name; blank lines are kept.                  |
-| `session`   | your login                               | The session name at the left of the status line.                                   |
-| `feed`      | none                                     | RSS or Atom feed. Without it there is no posts pane.                               |
-| `feed_note` | none                                     | `#` comment lines at the top of the posts pane.                                    |
-| `posts`     | `5`                                      | How many posts, 1 to 20.                                                           |
-| `posts_url` | the feed's site                          | Where "all of them at" points.                                                     |
-| `links`     | website and social accounts              | `label url` per line, one status-line segment each, labelled by `label`.           |
-| `repos`     | `5`                                      | How many repositories `top` lists.                                                 |
-| `out`       | `afterglow`                              | Where the SVGs are written.                                                        |
-| `readme`    | `README.md`                              | Updated between the markers. Empty leaves it alone; the block is always in `<out>/README.block.md`. |
-| `base_url`  | `raw.githubusercontent.com/<repo>/output` | Where the README loads the images from.                                           |
+| Input       | Default                                   | What it does                                                                   |
+| ----------- | ----------------------------------------- | ------------------------------------------------------------------------------ |
+| `user`      | repository owner                          | Whose profile is drawn.                                                        |
+| `token`     | `github.token`                            | Reads the profile over GraphQL. It sees public data only.                      |
+| `theme`     | `phosphor`                                | `phosphor` (green), `amber`, `ice` (blue-white) or `github`.                   |
+| `accent`    | the theme's                               | One `#rrggbb` colour for the accent and the contribution ramp, kept readable on GitHub's dark and light grounds. |
+| `effects`   | none                                      | `crt` (scanlines and a faint flicker on every image), `typing` (the `whoami` name types itself in), or both. The motion stops under reduced motion. |
+| `shape`     | `torus`                                   | What the `year` pane draws, and `neofetch` for a logo: `torus`, `planet`, `mobius`, `coil`, `twist`, `moon`, `knot` or `flag`. |
+| `year`      | the last twelve months                    | A calendar year to draw instead, such as `2024`.                               |
+| `timezone`  | `UTC`                                     | The IANA time zone `clock` reads hours in, such as `Europe/Istanbul`.          |
+| `layout`    | see [Layout](#layout)                     | The grid.                                                                      |
+| `density`   | `full`                                    | `compact` makes every pane compact.                                            |
+| `whoami`    | name, bio, company, location              | Lines for `whoami`. The first is your name.                                    |
+| `session`   | your login                                | The name at the left of the status line.                                       |
+| `feed`      | none                                      | RSS or Atom feed for `posts`.                                                  |
+| `feed_note` | none                                      | `#` comment lines at the top of `posts`.                                       |
+| `posts`     | `5`                                       | How many posts, 1 to 20.                                                       |
+| `posts_url` | the feed's site                           | Where "all of them at" points.                                                 |
+| `links`     | website and social accounts               | `label url` per line, one status-line segment each. Links past the line's width are left out. |
+| `repos`     | `5`                                       | How many repositories `top` lists, 1 to 20.                                    |
+| `out`       | `afterglow`                               | Where the SVGs are written.                                                    |
+| `readme`    | `README.md`                               | Updated between the markers; empty leaves it alone. The block is always in `<out>/README.block.md`. |
+| `base_url`  | `raw.githubusercontent.com/<repo>/output` | Where the README loads the images from.                                        |
 
-A streak shorter than two days is left out rather than printed as a zero, and a
-quiet today does not end it yet. `langs` and `top` count only public
-repositories, whatever the token could see.
+`langs`, `top`, `pinned`, `prs`, `releases`, `log`, `clock` and `neofetch` count
+public repositories only. A streak shorter than two days is left out; with
+`year`, the streak is that year's longest.
 
 ## Run it locally
 
 ```sh
 bun install
-GITHUB_TOKEN=$(gh auth token) bun src/main.ts --user raelsei --theme amber --out /tmp/afterglow
+GITHUB_TOKEN=$(gh auth token) bun src/main.ts --user <you> --shape mobius --out /tmp/afterglow
+open /tmp/afterglow/preview.html
 ```
 
-Every input is also a flag (`--feed-note`, `--posts-url`, …) or an
-`INPUT_<NAME>` variable. `bun test` covers the feed parser, line wrapping, the
-streak rules, the layout parser, row placement and the README markers; `bun run build` rebuilds
-`dist/index.mjs`, which is what the action runs and is committed on purpose.
+Every input is also a flag (`--feed-note`) or an `INPUT_<NAME>` variable.
+`preview.html` lays the dashboard out the way GitHub's README column does.
+`GITHUB_TOKEN=$(gh auth token) bun run preview -- --user <you> [flags]` draws
+every shape with the same flags and serves them side by side on localhost.
+
+Before a pull request: `bun test` and `bun run typecheck`, then `bun run build`.
+The action runs `dist/index.mjs`, which is committed; CI fails when it is not
+the build of the source beside it.
+
+## How it works
+
+GitHub serves README images through a proxy, strips scripts and styles, and
+lets an SVG loaded as an image fetch nothing. So:
+
+- Motion is CSS inside each SVG. The year is 120 frames drawn once and shown
+  in turn, each lingering at falling opacity like phosphor. Under
+  `prefers-reduced-motion` nothing moves.
+- Each SVG carries its own copy of [Google Sans Code](https://github.com/googlefonts/googlesans-code),
+  cut down to the characters it draws.
+- The layout is floated images on a 28px band, the smallest pitch a phone
+  still shows without gaps.
+- Each image ships dark and light, and `<picture>` follows the viewer's theme.
+- Images are named by their content, because GitHub's CDN caches a name for
+  minutes. The `output` branch is force-pushed, and each run carries over the
+  images the old README used, so it never points at a missing file. The README
+  therefore changes whenever a drawing does, which is most days.
+- `history.json` rides on the `output` branch too: a snapshot a day of stars,
+  followers and contributions, which `trends` and `neofetch`'s weekly changes read.
 
 ## Credits
 
