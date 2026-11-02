@@ -360,7 +360,7 @@ function nameLine(ink: Ink, y: number, name: string, size: number, typing: boole
 }
 
 function defaultIdentity(profile: Profile): string[] {
-  const lines = profile.bio ? wrap(profile.bio, 43, 3) : [];
+  const lines = profile.bio ? wrap(profile.bio, textCols(HALF), 3) : [];
   const where = [profile.company, profile.location].filter(Boolean).join(" · ");
   return where ? [...lines, where] : lines;
 }
@@ -478,9 +478,13 @@ export function postsPane(feed: Feed, options: { count: number; note: string[]; 
     href: options.archive ?? undefined,
     bands: options.archive ? 2 : 1,
     chrome: { bottom: true },
-    draw: ({ ink }) => ({
+    draw: ({ ink, width }) => ({
       body: archiveShown
-        ? ink.line(PAD, baseline(0), [{ text: "…".padEnd(gutter), tone: "muted" }, { text: "all of them at ", tone: "muted" }, { text: archiveShown, tone: "muted", link: true }])
+        ? ink.line(PAD, baseline(0), [
+            { text: "…".padEnd(gutter), tone: "muted" },
+            { text: "all of them at ", tone: "muted" },
+            { text: fit(archiveShown, textCols(width) - gutter - 15), tone: "muted", link: true },
+          ])
         : "",
     }),
   };
@@ -1099,8 +1103,9 @@ export function clockPane(profile: Profile, commits: Commit[], timeZone: string,
 
 // ── neofetch ────────────────────────────────────────────────────────────────
 
-/** The logo's character grid, in compact year cells: about 118 px square. */
-const LOGO = { cols: 28, rows: 16 } as const;
+/** The logo's character grid, in compact year cells: about 113 px square, which
+ *  leaves a half pane 28 columns for the lines beside it. */
+const LOGO = { cols: 27, rows: 16 } as const;
 
 /** Whole years and months from `since` to `now`; a month counts once its day of the month comes round. */
 export function age(since: Date, now: Date): string {

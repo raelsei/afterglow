@@ -152,7 +152,8 @@ layout: |
 - Lists (`posts`, `top`, `pinned`, `prs`, `releases`, `log`) are one image per
   line, so every line is its own link. Two lists in one row, or a list reaching
   down, are drawn as one image and link as a whole.
-- On a phone the columns stack, and the pane that floats comes first.
+- Two columns stay side by side in a window 1280px wide or wider. Narrower,
+  and on a phone, they stack, and the pane that floats comes first.
 
 ## Inputs
 
