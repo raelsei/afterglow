@@ -1,5 +1,5 @@
 import { FAMILY, fontFaces } from "./font";
-import { columns, escapeXml } from "./text";
+import { columns, escapeXml, fit } from "./text";
 import type { Palette } from "./theme";
 
 /**
@@ -8,19 +8,28 @@ import type { Palette } from "./theme";
  * and 28px lands on the 21px line box its paragraphs impose.
  */
 export const BAND = 28;
-/** GitHub's README column at viewports of 1280px and up. */
+/** GitHub's README column at its widest, from a 1295px viewport up. Below
+ *  that it is the viewport less 449px: 831 at 1280, 751 at 1200. */
 export const COLUMN = 846;
+/** The narrowest column that keeps two columns side by side: a 1280px laptop's. */
+export const NARROW_COLUMN = 831;
 /** A pane in a two-column row. Two of them plus GitHub's 20px image padding
- *  fill the column, 6px to spare. 410 is also the widest pane a 390px phone
- *  shrinks to 308 with its 28px bands still on GitHub's 21px line box. */
-export const HALF = 410;
+ *  fill the narrow column, 11px to spare (26 at the widest). A 390px phone
+ *  shrinks a 400px pane to 308, its 28px bands to 21.6, still at least
+ *  GitHub's 21px line box; 410 is the widest pane that holds. */
+export const HALF = 400;
 export const GUTTER = 20;
 export const FULL = HALF * 2 + GUTTER;
-/** A right-floated pane is anchored to the column's right edge, not to its
- *  neighbour; this much trailing room puts it where the right column sits in
- *  every other row (846 - 416 - 20 = 410), and leaves the list beside it
- *  exactly its 410px. */
-export const RIGHT_MARGIN = COLUMN - FULL;
+/**
+ * A right-floated pane is anchored to the column's right edge, not to its
+ * neighbour, so it moves with the column while the right column of every other
+ * row stays at HALF + GUTTER. This much trailing room puts it exactly there in
+ * the narrow column (831 - 411 - 20 = 400) and leaves the list beside it its
+ * 400px; in a wider column it sits that much further right, 15px at 846, and
+ * the list has room to spare. Any more room and the list would drop below it
+ * on a 1280px screen.
+ */
+export const RIGHT_MARGIN = NARROW_COLUMN - FULL;
 /** Boxes sit 4px inside their image, so the 20px gutter plus 8 makes 28 between columns, the same as between rows. */
 export const INSET = 4;
 /** Where text starts inside an image. */
@@ -123,8 +132,11 @@ export function piece(options: {
     gaps.push([titleX - 6, titleX + columns(chrome.top.title) * TEXT.advance + 6]);
     if (chrome.top.meta) {
       const metaEnd = right - 14;
-      labels += ink.lineEnd(metaEnd, top + 5, [{ text: chrome.top.meta, tone: "muted" }]);
-      gaps.push([metaEnd - columns(chrome.top.meta) * TEXT.advance - 6, metaEnd + 6]);
+      // Cut short of the title, with a stretch of border left between them.
+      const room = Math.floor((metaEnd - titleX - columns(chrome.top.title) * TEXT.advance - 24) / TEXT.advance);
+      const meta = fit(chrome.top.meta, Math.max(1, room));
+      labels += ink.lineEnd(metaEnd, top + 5, [{ text: meta, tone: "muted" }]);
+      gaps.push([metaEnd - columns(meta) * TEXT.advance - 6, metaEnd + 6]);
     }
     const start = chrome.bottom ? bottom - r : height;
     path += `M${left} ${start}V${top + r}A${r} ${r} 0 0 1 ${left + r} ${top}`;
